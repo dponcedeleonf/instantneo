@@ -6,7 +6,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'openai',
-        'inspect',
         'typing',
     ],
     author='Diego Ponce de León Franco',
