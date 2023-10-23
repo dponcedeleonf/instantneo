@@ -10,7 +10,7 @@ setup(
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
-    description='',  # Puedes añadir una descripción en el futuro si lo deseas
+    description='', 
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/dponcedeleonf/instantneo',
@@ -20,7 +20,7 @@ setup(
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.11',
     ],
-    keywords='openai, agent, neo, matrix, wrapper',
+    keywords='openai, agent, wrapper',
     project_urls={
         'Bug Reports': 'https://github.com/dponcedeleonf/instantneo/issues', 
         'Source': 'https://github.com/dponcedeleonf/instantneo',  
