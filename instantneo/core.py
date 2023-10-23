@@ -55,7 +55,7 @@ class InstantNeo:
 
     def set_up_skills(self):
         skills = []
-        if not self.skills:  # Verificación añadida aquí
+        if not self.skills: 
             return skills
         for function in self.skills:
             params_info = inspect.signature(function).parameters
