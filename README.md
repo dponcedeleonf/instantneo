@@ -92,7 +92,8 @@ print(respuesta2)
 ¡Prueba lo que obtienes!
 
 ## Próximamente
-
+- **Documentación completa**: Abarcará todos los argumentos que acepta el constructor.
+  
 - **Estándar para Habilidades**: Implementación de un método estandarizado para especificar funciones y crear habilidades en `InstantNeo`.
 
 - **Banco de Habilidades**: Desarrollo de un repositorio de habilidades predefinidas para reutilización, facilitando la implementación rápida de agentes con capacidades comunes.
