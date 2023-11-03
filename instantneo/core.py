@@ -5,13 +5,13 @@ from typing import List, Any, Callable
 
 class InstantNeo:
     def __init__(self, model: str, role_setup: str,
-             temperature: float = 0.7,  
-             max_tokens: int = 150,      
-             presence_penalty: float = 0.1,  
-             frequency_penalty: float = 0.1, 
-             skills: List[Callable[..., Any]] = None, 
-             stop=None):
-        self.skills = skills if skills is not None else [] 
+                 temperature: float = 0.7,
+                 max_tokens: int = 150,
+                 presence_penalty: float = 0.1,
+                 frequency_penalty: float = 0.1,
+                 skills: List[Callable[..., Any]] = None,
+                 stop=None,): 
+        self.skills = skills if skills is not None else []
         self.function_map = {f.__name__: f for f in self.skills}
         self.model = model
         self.role_setup = role_setup
@@ -84,14 +84,13 @@ class InstantNeo:
             skills.append(skill)
         return skills
 
-
     def run(self,
         prompt: str,
         model: str = None,
         role_setup: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        stop = None,
+        stop=None,
         presence_penalty: float = None,
         frequency_penalty: float = None,
         return_full_response: bool = False):
@@ -128,6 +127,10 @@ class InstantNeo:
         try:
             response = openai.ChatCompletion.create(**chat_args)
 
+            # Si return_full_response es True, retornar la respuesta completa sin más comprobaciones
+            if return_full_response:
+                return response
+
             # Checar si la respuesta contiene una llamada a función
             function_call = response['choices'][0]['message'].get('function_call')
             if function_call:
@@ -153,13 +156,8 @@ class InstantNeo:
                 content = response['choices'][0]['message']['content']
                 return content
 
-            # Si return_full_response es True, retornar la respuesta completa
-            elif return_full_response:
-                return response
-
             else:
                 raise ValueError('No se encontró contenido ni llamada a función en la respuesta.')
 
         except Exception as e:
             return str(e)
-
