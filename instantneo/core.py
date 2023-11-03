@@ -5,7 +5,7 @@ from typing import List, Any, Callable
 
 class InstantNeo:
     def __init__(self, model: str, role_setup: str,
-                 temperature: float = 0.7,
+                 temperature: float = 0.45,
                  max_tokens: int = 150,
                  presence_penalty: float = 0.1,
                  frequency_penalty: float = 0.1,
