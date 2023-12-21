@@ -7,6 +7,7 @@ setup(
     install_requires=[
         'openai',
         'typing',
+        'python-dotenv'
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',

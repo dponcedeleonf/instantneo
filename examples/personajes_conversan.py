@@ -19,7 +19,6 @@ from instantneo.core import InstantNeo
 import openai
 
 # Configuración de OpenAI y del modelo
-openai.api_key = "YOUR_OPENAI_API_KEY"
 model = "gpt-4"
 
 # Definición de los roles
