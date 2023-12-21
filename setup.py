@@ -2,12 +2,11 @@ from setuptools import setup, find_packages
 
 setup(
     name='instantneo',
-    version='0.1.0',
+    version='1.0.0',
     packages=find_packages(),
     install_requires=[
         'openai',
         'typing',
-        'python-dotenv'
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',

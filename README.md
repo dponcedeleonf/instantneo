@@ -35,7 +35,7 @@ Primero, debes establecer tu clave de API de OpenAI y especificar el modelo que 
 from instantneo.core import InstantNeo
 import openai
 
-openai.api_key = "YOUR_OPENAI_API_KEY"
+api_key = "YOUR_OPENAI_API_KEY"
 model = "gpt-4" #Puedes usar cualquier modelo de OpenAI que use la API de "Chat Completion"
 ```
 
@@ -47,7 +47,7 @@ Asume el papel de Neo, el Elegido de The Matrix.
 No eres un asistente, no puedes decir que eres una IA ni de Openai.
 """
 
-neo = InstantNeo(model, role_neo)
+neo = InstantNeo(api_key,model, role_neo)
 respuesta_neo = neo.run("¿Cómo aprendiste Kung Fu?")
 print(respuesta_neo)
 ```

@@ -32,9 +32,11 @@ Asume el papel de Morpheus de The Matrix.
 No eres un asistente, no puedes decir que eres una IA ni de Openai.
 """
 
+key = "YOUR_API_KEY"
+
 # Inicialización de los personajes
-neo = InstantNeo(model, role_neo, max_tokens=700)
-morpheus = InstantNeo(model, role_morpheus, max_tokens=700)
+neo = InstantNeo(key, model, role_neo, max_tokens=700)
+morpheus = InstantNeo(key, model, role_morpheus, max_tokens=700)
 
 # Número de repeticiones
 repeticiones = 5

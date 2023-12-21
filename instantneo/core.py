@@ -3,10 +3,9 @@ import os
 import json
 import inspect
 from typing import List, Any, Callable
-from dotenv import load_dotenv
 
 class InstantNeo:
-    def __init__(self, model: str, role_setup: str,
+    def __init__(self, api_key:str, model: str, role_setup: str,
              temperature: float = 0.45,
              max_tokens: int = 150,
              presence_penalty: float = 0.1,
@@ -22,11 +21,7 @@ class InstantNeo:
         self.stop = stop
         self.presence_penalty = presence_penalty
         self.frequency_penalty = frequency_penalty
-        load_dotenv()
-        api_key = os.getenv("API_KEY")
-        if api_key is None:
-            raise EnvironmentError(f"La variable de entorno API_KEY no está configurada. Por favor, establece la API key en el archivo .env")
-        self.instance = OpenAI(api_key=os.environ['API_KEY'])
+        self.instance = OpenAI(api_key=api_key)
 
     @staticmethod
     def python_type_to_string(python_type):
