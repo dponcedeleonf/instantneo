@@ -25,7 +25,7 @@ class InstantNeo:
         load_dotenv()
         api_key = os.getenv("API_KEY")
         if api_key is None:
-            raise EnvironmentError(f"La variable de entorno {API_KEY} no está configurada. Por favor, establece la API key en el archivo .env")
+            raise EnvironmentError(f"La variable de entorno API_KEY no está configurada. Por favor, establece la API key en el archivo .env")
         self.instance = OpenAI(api_key=os.environ['API_KEY'])
 
     @staticmethod
