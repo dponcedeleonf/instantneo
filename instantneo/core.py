@@ -1,16 +1,17 @@
-import openai
+from openai import OpenAI
+import os
 import json
 import inspect
 from typing import List, Any, Callable
 
 class InstantNeo:
-    def __init__(self, model: str, role_setup: str,
-                 temperature: float = 0.45,
-                 max_tokens: int = 150,
-                 presence_penalty: float = 0.1,
-                 frequency_penalty: float = 0.1,
-                 skills: List[Callable[..., Any]] = None,
-                 stop=None,): 
+    def __init__(self, api_key:str, model: str, role_setup: str,
+             temperature: float = 0.45,
+             max_tokens: int = 150,
+             presence_penalty: float = 0.1,
+             frequency_penalty: float = 0.1,
+             skills: List[Callable[..., Any]] = None,
+             stop=None,): 
         self.skills = skills if skills is not None else []
         self.function_map = {f.__name__: f for f in self.skills}
         self.model = model
@@ -20,6 +21,7 @@ class InstantNeo:
         self.stop = stop
         self.presence_penalty = presence_penalty
         self.frequency_penalty = frequency_penalty
+        self.instance = OpenAI(api_key=api_key)
 
     @staticmethod
     def python_type_to_string(python_type):
@@ -90,7 +92,7 @@ class InstantNeo:
         role_setup: str = None,
         temperature: float = None,
         max_tokens: int = None,
-        stop=None,
+        stop = None,
         presence_penalty: float = None,
         frequency_penalty: float = None,
         return_full_response: bool = False):
@@ -125,17 +127,17 @@ class InstantNeo:
             chat_args["function_call"] = "auto"
 
         try:
-            response = openai.ChatCompletion.create(**chat_args)
+            response = self.instance.chat.completions.create(**chat_args)
 
-            # Si return_full_response es True, retornar la respuesta completa sin más comprobaciones
+            # Si return_full_response es True, retornar la respuesta completa
             if return_full_response:
                 return response
 
             # Checar si la respuesta contiene una llamada a función
-            function_call = response['choices'][0]['message'].get('function_call')
+            function_call = response.choices[0].message.function_call
             if function_call:
-                function_name = function_call['name']
-                arguments_str = function_call['arguments']
+                function_name = function_call.name
+                arguments_str = function_call.arguments
                 arguments_dic = json.loads(arguments_str)
 
                 # Verificar si la función está permitida
@@ -152,8 +154,8 @@ class InstantNeo:
                     raise ValueError(f'Función no permitida: {function_name}')
 
             # Si no hay una llamada a función, verificar si hay texto de respuesta
-            elif response['choices'][0]['message'].get('content'):
-                content = response['choices'][0]['message']['content']
+            elif response.choices[0].message.content:
+                content = response.choices[0].message.content
                 return content
 
             else:
