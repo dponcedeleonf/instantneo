@@ -10,7 +10,7 @@ InstantNeo ofrece una abstracción limpia de las funcionalidades comunes del API
 
 - **🔌 Habilidades Plug and Play**: Extiende la funcionalidad de tu agente definiendo habilidades como funciones Python. Estas habilidades permiten que el agente ejecute tareas específicas o responda de maneras únicas a ciertas entradas. Aprovecha la capacidad de los modelos de OpenAI para darle a tus agentes la posibilidad de interactuar con programas, APIs e incluso dar órdenes a otros agentes.
 
-- **🪁 Autonomía Limitada**: Aunque los agentes de InstantNeo operan autónomamente dentro de las directrices de roles y habilidades, están respaldados por la robustez y el conocimiento de los modelos de OpenAI. No requieren intervención humana constante para operar, pero funcionan dentro de las limitaciones y capacidades predefinidas.
+- **🪁 Autonomía Controlada**: Aunque los agentes de InstantNeo operan autónomamente dentro de las directrices de roles y habilidades, están respaldados por la robustez y el conocimiento de los modelos de OpenAI. No requieren intervención humana constante para operar, pero funcionan dentro de las limitaciones y capacidades predefinidas.
 
 - **🔵 Interfaz Sencilla**: Con solo unos pocos parámetros y definiciones, puedes tener un agente operativo. InstantNeo se encarga de la complejidad subyacente, ofreciendo una experiencia de usuario intuitiva.
 
