@@ -2,7 +2,7 @@ from openai import OpenAI
 import json
 import inspect
 import typing
-from typing import List, Any, Callable
+from typing import List, Tuple, Dict, Any, Callable
 
 class InstantNeo:
     def __init__(self, api_key: str, model: str, role_setup: str,
