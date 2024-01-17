@@ -105,7 +105,7 @@ print(respuesta1)
 respuesta2 = neo.run("¿Qué pasa si te disparan? ¿Esquivas las balas?")
 print(respuesta2)
 ```
-¡Prueba lo que obtienes!
+¡Explora por tu cuenta y mira lo que obtienes!
 
 ## Parámetros de inicialización
 
