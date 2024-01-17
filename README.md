@@ -71,13 +71,29 @@ Puedes especificar las habilidades de tu agente de manera muy simple, autorizán
 
 ```python
 #Definimos algunas funciones simples como ejemplo
-def kung_fu():
-    """Esta función representa la habilidad de Neo de conocer el kung fu."""
+def kung_fu() -> str:
+    """
+    Representa la habilidad de Neo de conocer kung fu.
+    Cuando se invoca, simplemente retorna una cadena indicando que Neo
+    ha adquirido esta habilidad.
+
+    Returns:
+        str: Un mensaje que indica que Neo ahora conoce kung fu.
+    """
     return "Ya sé kung fu."
 
-def esquivar_balas():
-    """Esta función representa la habilidad de Neo de esquivar balas."""
+
+def esquivar_balas() -> str:
+    """
+    Representa la habilidad de Neo de esquivar balas.
+    Esta función retorna un mensaje que refleja esta habilidad, aunque con un
+    giro, indicando que puede detenerlas en lugar de esquivarlas.
+
+    Returns:
+        str: Un mensaje que refleja la habilidad de Neo para detener balas.
+    """
     return "No es necesario esquivarlas si puedes detenerlas."
+
 
 # Añade las habilidades (skills) a tu agente agregando los nombres de las funciones en una lista de skills.
 skills_neo = [kung_fu, esquivar_balas]
@@ -119,6 +135,8 @@ Al utilizar el método run, cada parámetro tiene un propósito específico:
 - **model, role_setup, temperature, max_tokens, stop, presence_penalty, frequency_penalty:** Estos parámetros permiten modificar la configuración de una petición sin alterar los valores predeterminados de la instancia. Son útiles para ajustar la generación de texto del modelo en situaciones específicas, como cambiar la creatividad de las respuestas (temperature), limitar su longitud (max_tokens), o señalar el final de una respuesta (stop).
 
 - **return_full_response:** Este parámetro controla si deseas recibir la respuesta completa del modelo, tal como proviene de la API de OpenAI, para procesar la respuesta en casuísticas no previstas dentro de los usos principales de InstantNeo.
+
+
 
 ## Próximamente
 
