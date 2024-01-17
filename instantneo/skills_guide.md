@@ -33,7 +33,7 @@ Usa docstrings para documentar la función, siguiendo la Guía de Estilo de Goog
 - Retorno (Returns): Describe qué retorna la función.
 - Excepciones (Raises): Menciona errores que podría lanzar la función (cuando aplique)
 
-> [!IMPORTANT]
+> [!CAUTION]
 > Respeta los saltos de línea, notaciones y claves (Args, Returns y Raises), según el formato establecido por Google. 
 El correcto formato del Docstring es necesario para que `InstantNeo` pueda convertir las funciones en habilidades para el Agente
 
