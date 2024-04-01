@@ -11,18 +11,25 @@ class InstantNeo:
                  presence_penalty: float = 0.1,
                  frequency_penalty: float = 0.1,
                  skills: List[Callable[..., Any]] = None,
-                 stop=None,):
-        # Inicialización de la instancia con configuraciones y habilidades.
-        self.skills = skills if skills is not None else []
-        self.function_map = {f.__name__: f for f in self.skills}
+                 stop=None,
+                 adapter=None,
+                 stream = False):
+        # Constructor de la clase InstantNeo. Inicializa los atributos de la instancia.
+        self.api_key = api_key
         self.model = model
         self.role_setup = role_setup
         self.temperature = temperature
         self.max_tokens = max_tokens
-        self.stop = stop
         self.presence_penalty = presence_penalty
         self.frequency_penalty = frequency_penalty
-        self.instance = OpenAI(api_key=api_key)
+        self.skills = skills if skills is not None else []
+        self.function_map = {f.__name__: f for f in self.skills}
+        self.stop = stop
+        self.adapter = adapter
+        self.stream = stream
+      
+        if not adapter:
+            self.instance = OpenAI(api_key=api_key)
 
     @staticmethod
     def python_type_to_string(python_type):
@@ -124,79 +131,81 @@ class InstantNeo:
                 skills.append(skill)
         return skills
 
-    def run(self,
-            prompt: str,
-            model: str = None,
-            role_setup: str = None,
-            temperature: float = None,
-            max_tokens: int = None,
-            stop=None,
-            presence_penalty: float = None,
-            frequency_penalty: float = None,
-            return_full_response: bool = False):
-        
-        # Configuración y ejecución de la solicitud al modelo.
-        
-        model = model or self.model
-        role_setup = role_setup or self.role_setup
-        temperature = temperature or self.temperature
-        max_tokens = max_tokens or self.max_tokens
-        stop = stop or self.stop
-        presence_penalty = presence_penalty or self.presence_penalty
-        frequency_penalty = frequency_penalty or self.frequency_penalty
+    def run(self, prompt: str, model: str = None, role_setup: str = None, 
+            temperature: float = None, max_tokens: int = None, stop=None, 
+            presence_penalty: float = None, frequency_penalty: float = None, return_full_response: bool = False, 
+            stream=False, img: str=None):
+        # Método principal para ejecutar una solicitud al modelo de OpenAI.
+        if self.adapter:
+            # Usar el adaptador si está presente
+            return self.adapter.run(
+                prompt=prompt,
+                api_key=self.api_key,
+                model=model or self.model,
+                role_setup=role_setup or self.role_setup,
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens or self.max_tokens,
+                stop=stop,
+                presence_penalty=presence_penalty or self.presence_penalty,
+                frequency_penalty=frequency_penalty or self.frequency_penalty,
+                return_full_response=return_full_response,
+                stream=stream or self.stream,
+                img=img
+            )
+        else:
+            # Configuración y ejecución de la solicitud al modelo de OpenAI.
+            model = model or self.model
+            role_setup = role_setup or self.role_setup
+            temperature = temperature or self.temperature
+            max_tokens = max_tokens or self.max_tokens
+            stop = stop or self.stop
+            presence_penalty = presence_penalty or self.presence_penalty
+            frequency_penalty = frequency_penalty or self.frequency_penalty
 
-        # Configurar habilidades para la instancia
-        skills = self.set_up_skills()
+            # Configurar habilidades para la instancia
+            skills = self.set_up_skills()
 
-        # Solicitud al modelo de OpenAI. Preparar argumentos para la solicitud
-        chat_args = {
-            "model": model,
-            "messages": [
-                {"role": "system", "content": role_setup},
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "stop": stop,
-            "presence_penalty": presence_penalty,
-            "frequency_penalty": frequency_penalty
-        }
-        # # Solicitud al modelo de OpenAI. Incluir habilidades si están disponibles
-        if skills:
-            chat_args["functions"] = skills
-            chat_args["function_call"] = "auto"
+            # Preparar argumentos para la solicitud a OpenAI
+            chat_args = {
+                "model": model,
+                "messages": [
+                    {"role": "system", "content": role_setup},
+                    {"role": "user", "content": prompt}
+                ],
+                "temperature": temperature,
+                "max_tokens": max_tokens,
+                "stop": stop,
+                "presence_penalty": presence_penalty,
+                "frequency_penalty": frequency_penalty
+            }
 
-        try:
-            # Realizar la solicitud al modelo de OpenAI
-            response = self.instance.chat.completions.create(**chat_args)
-            # Retornar respuesta completa si se solicita.
-            # La respuesta completa es un JSON que incluye la respuesta y metadata
-            if return_full_response:
-                return response
-            # Procesar la respuesta para ver si incluye la llamada a una función como respuesta del modelo
-            function_call = response.choices[0].message.function_call
-            if function_call:
-                # Si el modelo responde con una llamada a una función, se extrae la información de la función
-                function_name = function_call.name
-                arguments_str = function_call.arguments
-                arguments_dic = json.loads(arguments_str)
-                #Se ejecuta directamente la función
-                is_valid_function = any(skill["name"] == function_name for skill in skills)
-                if is_valid_function:
-                    function = self.function_map.get(function_name)
-                    if function:
-                        result = function(**arguments_dic)
-                        return result
+            if skills:
+                chat_args["functions"] = skills
+                chat_args["function_call"] = "auto"
+
+            try:
+                response = self.instance.chat.completions.create(**chat_args)
+
+                if return_full_response:
+                    return response
+                function_call = response.choices[0].message.function_call #if response.choices[0].message.get('function_call') else None
+                if function_call:
+                    function_name = function_call.name
+                    arguments_str = function_call.arguments
+                    arguments_dic = json.loads(arguments_str)
+                    is_valid_function = any(skill["name"] == function_name for skill in skills)
+                    if is_valid_function:
+                        function = self.function_map.get(function_name)
+                        if function:
+                            result = function(**arguments_dic)
+                            return result
+                        else:
+                            raise ValueError(f'Function not found: {function_name}')
                     else:
-                        raise ValueError(f'Función no encontrada: {function_name}')
+                        raise ValueError(f'Function not allowed: {function_name}')
+                elif response.choices[0].message.content:
+                    return response.choices[0].message.content
                 else:
-                    raise ValueError(f'Función no permitida: {function_name}')
-            # Si no se llama a una función, retorna el contenido de la respuesta
-            elif response.choices[0].message.content:
-                return response.choices[0].message.content
-
-            else:
-                raise ValueError('No se encontró contenido ni llamada a función en la respuesta.')
-
-        except Exception as e:
-            return str(e)
+                    raise ValueError('No content or function call found in the response.')
+            except Exception as e:
+                return str(e)
