@@ -2,11 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name='instantneo',
-    version='1.1.0',
+    version='0.2.0',
     packages=find_packages(),
     install_requires=[
         'openai',
         'typing',
+        'anthropic'
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
