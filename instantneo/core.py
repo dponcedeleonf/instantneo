@@ -12,7 +12,7 @@ class InstantNeo:
                  frequency_penalty: float = 0.1,
                  skills: List[Callable[..., Any]] = None,
                  stop=None,
-                 adapter=None,
+                 provider=None,
                  stream = False):
         # Constructor de la clase InstantNeo. Inicializa los atributos de la instancia.
         self.api_key = api_key
@@ -25,10 +25,10 @@ class InstantNeo:
         self.skills = skills if skills is not None else []
         self.function_map = {f.__name__: f for f in self.skills}
         self.stop = stop
-        self.adapter = adapter
+        self.provider = provider
         self.stream = stream
       
-        if not adapter:
+        if not provider:
             self.instance = OpenAI(api_key=api_key)
 
     @staticmethod
@@ -136,9 +136,9 @@ class InstantNeo:
             presence_penalty: float = None, frequency_penalty: float = None, return_full_response: bool = False, 
             stream=False, img: str=None):
         # Método principal para ejecutar una solicitud al modelo de OpenAI.
-        if self.adapter:
+        if self.provider:
             # Usar el adaptador si está presente
-            return self.adapter.run(
+            return self.provider.run(
                 prompt=prompt,
                 api_key=self.api_key,
                 model=model or self.model,
