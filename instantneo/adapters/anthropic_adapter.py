@@ -1,7 +1,7 @@
 from anthropic import Anthropic
 import base64
 
-class ClaudeAdapter:
+class AnthropicAdapter:
     def __init__(self):
         self.client = None
     
