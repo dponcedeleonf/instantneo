@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='instantneo',
-    version='0.2.0-dev',
-    packages=find_packages() + ['adapters'],  # Agrega 'adapters' a la lista de paquetes
+    version='0.2.0',
+    packages=find_packages() + ['instantneo.adapters'],  # Modificación aquí
     install_requires=[
         'openai',
         'typing',
