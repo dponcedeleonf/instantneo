@@ -2,8 +2,8 @@ from setuptools import setup, find_packages
 
 setup(
     name='instantneo',
-    version='0.2.0',
-    packages=find_packages(),
+    version='0.2.0-dev',
+    packages=find_packages() + ['adapters'],  # Agrega 'adapters' a la lista de paquetes
     install_requires=[
         'openai',
         'typing',
@@ -11,7 +11,7 @@ setup(
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
-    description='', 
+    description='',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/dponcedeleonf/instantneo',
@@ -23,7 +23,7 @@ setup(
     ],
     keywords='openai, agent, wrapper',
     project_urls={
-        'Bug Reports': 'https://github.com/dponcedeleonf/instantneo/issues', 
-        'Source': 'https://github.com/dponcedeleonf/instantneo',  
+        'Bug Reports': 'https://github.com/dponcedeleonf/instantneo/issues',
+        'Source': 'https://github.com/dponcedeleonf/instantneo',
     },
 )
