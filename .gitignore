@@ -1,4 +1,6 @@
 .env
 build/*
 dist/*
+venv/*
 instantneo.egg-info/*
+test.py
