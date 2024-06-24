@@ -220,8 +220,10 @@ class InstantNeo:
             presence_penalty = presence_penalty or self.presence_penalty
             frequency_penalty = frequency_penalty or self.frequency_penalty
 
+            # Configurar habilidades para la instancia
             skills = self.set_up_skills()
 
+            # Preparar argumentos para la solicitud a OpenAI
             chat_args = {
                 "model": model,
                 "messages": [
