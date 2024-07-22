@@ -12,7 +12,7 @@ setup(
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
     description='',
-    long_description=open('README.md').read(),
+    long_description=open('README.md', encoding='utf-8').read(),
     long_description_content_type='text/markdown',
     url='https://github.com/dponcedeleonf/instantneo',
     classifiers=[
