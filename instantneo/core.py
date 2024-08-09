@@ -2,7 +2,8 @@ from openai import OpenAI
 import json
 import inspect
 import typing
-from typing import List, Tuple, Dict, Any, Callable
+from typing import List, Tuple, Dict, Any, Callable, Optional, Union
+import base64
 
 class InstantNeo:
     def __init__(self, api_key: str, model: str, role_setup: str,
@@ -11,10 +12,9 @@ class InstantNeo:
                  presence_penalty: float = 0.1,
                  frequency_penalty: float = 0.1,
                  skills: List[Callable[..., Any]] = None,
-                 stop=None,
+                 stop: Optional[Union[str, List[str]]] = None,
                  provider=None,
                  stream = False):
-        # Constructor de la clase InstantNeo. Inicializa los atributos de la instancia.
         self.api_key = api_key
         self.model = model
         self.role_setup = role_setup
@@ -33,7 +33,6 @@ class InstantNeo:
 
     @staticmethod
     def python_type_to_string(python_type):
-        # Convierte tipos de Python a su representación como tipos de datos JSON.
         if python_type in [int, float]:
             return "number"
         elif python_type is str:
@@ -51,14 +50,12 @@ class InstantNeo:
     
     @staticmethod
     def serialize_argument(arg):
-        # Convierte argumentos complejos (listas, diccionarios) a JSON para su procesamiento.
         if isinstance(arg, (list, dict)):
             return json.dumps(arg)
         return arg
 
     @staticmethod
     def extract_parameter_descriptions(function):
-        # Extrae descripciones de los parámetros de las funciones a partir de sus docstrings.
         if function.__doc__ is None:
             raise ValueError(f"La función '{function.__name__}' no tiene un docstring.")
 
@@ -79,9 +76,7 @@ class InstantNeo:
                 descriptions[param_name.strip()] = param_description.strip()
         return descriptions
 
-
     def set_up_skills(self):
-        # Configura las habilidades (funciones) para su uso en la instancia.
         skills = []
         if not self.skills:
             return skills
@@ -93,8 +88,6 @@ class InstantNeo:
             for name, param in params_info.items():
                 param_type = self.python_type_to_string(param.annotation)
                 description = param_descriptions.get(name, "")
-                # Procesamiento específico para tipos de datos
-                # Aquí excluimos diccionarios, pues no los admite el API de OpenAI
                 if isinstance(param.annotation, typing._GenericAlias):
                     if param.annotation.__origin__ in [list, typing.List]:
                         if param.annotation.__args__:
@@ -107,7 +100,6 @@ class InstantNeo:
                             "items": item_schema,
                             "description": description,
                         }
-                    # Excluyendo el manejo de diccionarios.
                     elif param.annotation.__origin__ in [dict, typing.Dict]:
                         raise TypeError("Las funciones con diccionarios como argumentos no son soportadas.")
                 else:
@@ -131,13 +123,33 @@ class InstantNeo:
                 skills.append(skill)
         return skills
 
+    @staticmethod
+    def encode_image_to_base64(image_path):
+        with open(image_path, "rb") as image_file:
+            encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
+        return encoded_string
+
+    @staticmethod
+    def get_media_type_from_extension(img_path):
+        extension = img_path.split('.')[-1].lower()
+        if extension in ["jpg", "jpeg"]:
+            return "image/jpeg"
+        elif extension == "png":
+            return "image/png"
+        elif extension == "gif":
+            return "image/gif"
+        elif extension == "webp":
+            return "image/webp"
+        else:
+            raise ValueError("Formato de imagen no soportado.")
+
     def run(self, prompt: str, model: str = None, role_setup: str = None, 
-            temperature: float = None, max_tokens: int = None, stop=None, 
-            presence_penalty: float = None, frequency_penalty: float = None, return_full_response: bool = False, 
-            stream=False, img: str=None):
-        # Método principal para ejecutar una solicitud al modelo de OpenAI.
+            temperature: float = None, max_tokens: int = None, 
+            stop: Optional[Union[str, List[str]]] = None, 
+            presence_penalty: float = None, frequency_penalty: float = None, 
+            return_full_response: bool = False, 
+            stream: bool = False, img: str = None):
         if self.provider:
-            # Usar el adaptador si está presente
             return self.provider.run(
                 prompt=prompt,
                 api_key=self.api_key,
@@ -145,7 +157,7 @@ class InstantNeo:
                 role_setup=role_setup or self.role_setup,
                 temperature=temperature or self.temperature,
                 max_tokens=max_tokens or self.max_tokens,
-                stop=stop,
+                stop=stop if stop is not None else self.stop,
                 presence_penalty=presence_penalty or self.presence_penalty,
                 frequency_penalty=frequency_penalty or self.frequency_penalty,
                 return_full_response=return_full_response,
@@ -153,59 +165,81 @@ class InstantNeo:
                 img=img
             )
         else:
-            # Configuración y ejecución de la solicitud al modelo de OpenAI.
             model = model or self.model
             role_setup = role_setup or self.role_setup
             temperature = temperature or self.temperature
             max_tokens = max_tokens or self.max_tokens
-            stop = stop or self.stop
+            stop = stop if stop is not None else self.stop
             presence_penalty = presence_penalty or self.presence_penalty
             frequency_penalty = frequency_penalty or self.frequency_penalty
 
-            # Configurar habilidades para la instancia
             skills = self.set_up_skills()
 
-            # Preparar argumentos para la solicitud a OpenAI
+            messages = []
+            if role_setup:
+                messages.append({"role": "system", "content": role_setup})
+
+            if img:
+                media_type = self.get_media_type_from_extension(img)
+                img_data = self.encode_image_to_base64(img)
+                messages.append({
+                    "role": "user",
+                    "content": [
+                        {"type": "image_url", "image_url": {"url": f"data:{media_type};base64,{img_data}"}},
+                        {"type": "text", "text": prompt}
+                    ]
+                })
+            else:
+                messages.append({"role": "user", "content": prompt})
+
             chat_args = {
                 "model": model,
-                "messages": [
-                    {"role": "system", "content": role_setup},
-                    {"role": "user", "content": prompt}
-                ],
+                "messages": messages,
                 "temperature": temperature,
                 "max_tokens": max_tokens,
-                "stop": stop,
                 "presence_penalty": presence_penalty,
-                "frequency_penalty": frequency_penalty
+                "frequency_penalty": frequency_penalty,
+                "stream": stream
             }
+
+            if stop is not None:
+                chat_args["stop"] = stop
 
             if skills:
                 chat_args["functions"] = skills
                 chat_args["function_call"] = "auto"
 
             try:
-                response = self.instance.chat.completions.create(**chat_args)
-
-                if return_full_response:
-                    return response
-                function_call = response.choices[0].message.function_call #if response.choices[0].message.get('function_call') else None
-                if function_call:
-                    function_name = function_call.name
-                    arguments_str = function_call.arguments
-                    arguments_dic = json.loads(arguments_str)
-                    is_valid_function = any(skill["name"] == function_name for skill in skills)
-                    if is_valid_function:
-                        function = self.function_map.get(function_name)
-                        if function:
-                            result = function(**arguments_dic)
-                            return result
-                        else:
-                            raise ValueError(f'Function not found: {function_name}')
-                    else:
-                        raise ValueError(f'Function not allowed: {function_name}')
-                elif response.choices[0].message.content:
-                    return response.choices[0].message.content
+                if stream and not return_full_response:
+                    response_text = ""
+                    for chunk in self.instance.chat.completions.create(**chat_args):
+                        if chunk.choices[0].delta.content is not None:
+                            response_text += chunk.choices[0].delta.content
+                    return response_text
                 else:
-                    raise ValueError('No content or function call found in the response.')
+                    response = self.instance.chat.completions.create(**chat_args)
+
+                    if return_full_response:
+                        return response
+
+                    if response.choices[0].message.function_call:
+                        function_call = response.choices[0].message.function_call
+                        function_name = function_call.name
+                        arguments_str = function_call.arguments
+                        arguments_dic = json.loads(arguments_str)
+                        is_valid_function = any(skill["name"] == function_name for skill in skills)
+                        if is_valid_function:
+                            function = self.function_map.get(function_name)
+                            if function:
+                                result = function(**arguments_dic)
+                                return result
+                            else:
+                                raise ValueError(f'Function not found: {function_name}')
+                        else:
+                            raise ValueError(f'Function not allowed: {function_name}')
+                    elif response.choices[0].message.content:
+                        return response.choices[0].message.content
+                    else:
+                        raise ValueError('No content or function call found in the response.')
             except Exception as e:
                 return str(e)
