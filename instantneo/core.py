@@ -180,7 +180,7 @@ class InstantNeo:
         if active_skills:
             formatted_tools = []
             for name, skill in active_skills.items():
-                skill_info = self.skill_manager.get_skill_info(name)
+                skill_info = self.skill_manager.get_skill_metadata_by_name(name)
                 if skill_info and 'parameters' in skill_info:
                     formatted_tools.append(format_tool(skill_info))
                 else:
@@ -202,7 +202,7 @@ class InstantNeo:
         active_skills = {}
         if skills:
             for skill_name in skills:
-                skill = self.skill_manager.get_skill(skill_name)
+                skill = self.skill_manager.get_skill_by_name(skill_name)
                 if skill:
                     active_skills[skill_name] = skill
                 else:
@@ -263,8 +263,8 @@ class InstantNeo:
                 function_args = json.loads(tool_call.function.arguments)
                 print(f"Llamando a la función: {function_name} con argumentos: {function_args}")
                 
-                if function_name in self.skill_manager.skills:
-                    skill = self.skill_manager.skills[function_name]
+                if function_name in self.skill_manager.get_skill_names():
+                    skill = self.skill_manager.get_skill_by_name(function_name)
                     
                     if execution_mode == self.EXECUTION_ONLY:
                         thread = threading.Thread(target=skill, kwargs=function_args)
@@ -290,7 +290,7 @@ class InstantNeo:
             return results[0] if len(results) == 1 else results
 
     def _execute_skill(self, skill_name: str, arguments: Dict[str, Any]):
-        skill = self.skill_manager.get_skill(skill_name)
+        skill = self.skill_manager.get_skill_by_name(skill_name)
         if skill is None:
             raise ValueError(f"Skill not found: {skill_name}")
         if self.async_execution:
