@@ -1,4 +1,17 @@
-.env
+# build
 build/*
 dist/*
 instantneo.egg-info/*
+
+# env
+.env
+.venv
+env/
+venv/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+test.py
