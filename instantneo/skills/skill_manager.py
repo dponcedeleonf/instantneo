@@ -10,7 +10,7 @@ class SkillLoader:
     def __init__(self, manager: "SkillManager"):
         self.manager = manager
     
-    def _build_metadata_filter(by_tags: Optional[List[str]] = None, by_name: Optional[str] = None) -> Callable[[Dict[str, Any]], bool]:
+    def _build_metadata_filter(self, by_tags: Optional[List[str]] = None, by_name: Optional[str] = None) -> Callable[[Dict[str, Any]], bool]:
         def metadata_filter(metadata: Dict[str, Any]) -> bool:
             if by_tags and not all(tag in metadata.get('tags', []) for tag in by_tags):
                 return False
@@ -135,6 +135,14 @@ class SkillManager:
             key: {"key": key, **func.skill_metadata}
             for key, func in sorted(self.registry.items())
         }
+    
+    def get_skill_metadata_by_name(self, name: str) -> Dict[str, Any]:
+        matches = {key: func for key, func in self.registry.items() if func.__name__ == name}
+        if not matches:
+            return None
+        if len(matches) == 1:
+            return matches[next(iter(matches.keys()))].skill_metadata
+        return {key: func.skill_metadata for key, func in matches.items()}
 
     def get_skills_by_tag(self, tag: str, 
                           return_keys: bool = False) -> Union[List[str], Dict[str, Any]]:
