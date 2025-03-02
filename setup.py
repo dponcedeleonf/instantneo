@@ -2,12 +2,15 @@ from setuptools import setup, find_packages
 
 setup(
     name='instantneo',
-    version='0.2.0',
-    packages=find_packages() + ['instantneo.adapters'],  # Modificación aquí
+    version='0.2.1',
+    packages=find_packages() + ['instantneo.adapters',
+                                'instantneo.skills',
+                                'instantneo.utils'],
     install_requires=[
         'openai',
         'typing',
         'anthropic',
+        'groq',
         'docstring_parser'
     ],
     author='Diego Ponce de León Franco',
