@@ -1,121 +1,153 @@
-# skill_decorators.py
-
-from typing import Any, List, Optional, Dict, Union
+import functools
+import contextvars
 import inspect
-from functools import wraps
-
-class Param:
-    def __init__(self, description: str, default: Any = inspect.Parameter.empty, enum: List[Any] = None):
-        self.description = description
-        self.default = default
-        self.enum = enum
+from typing import List, Dict, Any, Union, Optional, get_type_hints
+import docstring_parser
 
 def skill(
-    description: str,
-    category: Optional[str] = None,
-    tags: List[str] = None,
-    version: str = "1.0.0",
-    author: Optional[str] = None,
+    description: Optional[str] = None,
+    parameters: Optional[Dict[str, Dict[str, Any]]] = None,
+    tags: Optional[List[str]] = None,
+    version: Optional[str] = "1.0",
+    **additional_metadata
 ):
+    """
+    Decorador que añade metadata a la función y captura la información de la última llamada.
+    
+    Extrae automáticamente los tipos de los parámetros y la documentación (descripción y
+    parámetros) de la función en formatos Google, NumPy o reStructuredText si no se especifica
+    en la metadata del decorador. Los valores proporcionados manualmente prevalecen.
+    """
+    tags = tags or []  # Asigna lista vacía si no se proporcionan tags
+
     def decorator(func):
-        sig = inspect.signature(func)
-        parameters = {}
-        required = []
-        for name, param in sig.parameters.items():
-            param_type = get_type_str(param.annotation)
-            param_desc = "No description provided"
-            param_default = None
-            param_enum = None
+        # Obtener el docstring de la función
+        func_doc = inspect.getdoc(func) or ""
+        parsed_doc = None
+        if func_doc:
+            try:
+                parsed_doc = docstring_parser.parse(func_doc)
+            except Exception:
+                parsed_doc = None
 
-            if isinstance(param.default, Param):
-                param_desc = param.default.description
-                param_default = param.default.default
-                param_enum = param.default.enum
-            elif param.default is not inspect.Parameter.empty:
-                param_default = param.default
+        # Determinar la descripción final:
+        # - Si se proporciona en el decorador, se usa esa.
+        # - Si no, se usa la short_description del docstring (si existe).
+        # - Si tampoco, se usa el docstring completo o un fallback.
+        if description is not None:
+            description_final = description
+        elif parsed_doc and parsed_doc.short_description:
+            description_final = parsed_doc.short_description
+        else:
+            description_final = func_doc or "No description"
+
+        # Obtener las anotaciones de los parámetros (excluyendo 'return')
+        annotations = get_type_hints(func)
+        annotations.pop('return', None)
+
+        # Extraer la firma de la función para determinar los parámetros requeridos
+        signature = inspect.signature(func)
+        print("Firma de la función:", signature)
+        for param_name, param in signature.parameters.items():
+            print(f"{param_name}: default={param.default}, required={param.default == inspect.Parameter.empty}")
+
+        required_params = [
+            param_name for param_name, param in signature.parameters.items()
+            if param.default == inspect.Parameter.empty  # Sin valor por defecto
+        ]
+
+        # Construir la metadata de los parámetros:
+        # Si se proporciona metadata explícita, se utiliza; sino, se genera a partir de hints y docstring.
+        parameters_final = {}
+        for name in signature.parameters:
+            if parameters and name in parameters:
+                param_metadata = parameters[name]
+                # Si no es un diccionario, lo convertimos a uno usando el valor como descripción
+                if not isinstance(param_metadata, dict):
+                    param_metadata = {"description": str(param_metadata)}
+                else:
+                    param_metadata = param_metadata.copy()
+                if "type" not in param_metadata:
+                    param_type = annotations.get(name, "")
+                    param_metadata["type"] = param_type.__name__ if isinstance(param_type, type) else str(param_type)
+                parameters_final[name] = param_metadata
             else:
-                required.append(name)
+                # Generar metadata básica
+                param_type = annotations.get(name, "")
+                param_type_str = param_type.__name__ if isinstance(param_type, type) else str(param_type)
+                param_description = ""
+                if parsed_doc:
+                    for p in parsed_doc.params:
+                        if p.arg_name == name:
+                            param_description = p.description or ""
+                            break
+                parameters_final[name] = {
+                    "type": param_type_str,
+                    "description": param_description
+                }
 
-            param_schema = {
-                'type': param_type,
-                'description': param_desc,
-            }
-            if param_default is not inspect.Parameter.empty and param_default is not None:
-                param_schema['default'] = param_default
-            if param_enum is not None:
-                param_schema['enum'] = param_enum
-
-            parameters[name] = param_schema
-
-        return_type = get_type_str(sig.return_annotation)
-        return_info = {
-            'type': return_type,
-            'description': 'No description provided',
-        }
-
+        # Combinar toda la metadata extraída y la proporcionada manualmente
         metadata = {
             'name': func.__name__,
-            'description': description,
-            'parameters': parameters,
-            'return_info': return_info,
-            'category': category,
+            'description': description_final,
+            'parameters': parameters_final,
+            'required': required_params,
             'tags': tags,
             'version': version,
-            'author': author,
         }
+        metadata.update(additional_metadata)
 
-        func._skill_metadata = metadata
+        # Context variable para almacenar la información de la última llamada a la función
+        last_call_var = contextvars.ContextVar(f"last_call_{func.__name__}_{id(func)}", default=None)
 
-        @wraps(func)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
+        # Definir el wrapper, diferenciando funciones asíncronas y sincrónicas
+        if inspect.iscoroutinefunction(func):
+            @functools.wraps(func)
+            async def async_wrapper(*args, **kwargs):
+                last_call_var.set({
+                    'args': args,
+                    'kwargs': kwargs,
+                    'result': None,
+                    'exception': None
+                })
+                try:
+                    result = await func(*args, **kwargs)
+                    info = last_call_var.get()
+                    info['result'] = result
+                    return result
+                except Exception as e:
+                    info = last_call_var.get()
+                    info['exception'] = e
+                    raise
+            wrapper = async_wrapper
+        else:
+            @functools.wraps(func)
+            def sync_wrapper(*args, **kwargs):
+                last_call_var.set({
+                    'args': args,
+                    'kwargs': kwargs,
+                    'result': None,
+                    'exception': None
+                })
+                try:
+                    result = func(*args, **kwargs)
+                    info = last_call_var.get()
+                    info['result'] = result
+                    return result
+                except Exception as e:
+                    info = last_call_var.get()
+                    info['exception'] = e
+                    raise
+            wrapper = sync_wrapper
 
+        # Métodos auxiliares para acceder a la información de la última llamada
+        wrapper.get_last_call = lambda: last_call_var.get()
+        wrapper.get_last_result = lambda: last_call_var.get().get('result') if last_call_var.get() else None
+        wrapper.get_last_params = lambda: {'args': last_call_var.get().get('args'),
+                                            'kwargs': last_call_var.get().get('kwargs')} if last_call_var.get() else None
+
+        # Asignar la metadata procesada a la función
+        wrapper.skill_metadata = metadata
+        
         return wrapper
     return decorator
-
-def get_type_str(annotation):
-    type_map = {
-        int: "integer",
-        float: "number",
-        str: "string",
-        bool: "boolean",
-        list: "array",
-        dict: "object",
-        Any: "any",
-    }
-
-    if annotation is inspect.Parameter.empty:
-        return 'any'
-    if isinstance(annotation, str):
-        return annotation
-    if annotation is Any:
-        return 'any'
-    if annotation in type_map:
-        return type_map[annotation]
-    elif hasattr(annotation, '__origin__'):
-        origin = annotation.__origin__
-        args = getattr(annotation, '__args__', [])
-        if origin is Union:
-            non_none_args = [arg for arg in args if arg is not type(None)]
-            if len(non_none_args) == 1:
-                return get_type_str(non_none_args[0])
-            else:
-                return {"oneOf": [get_type_str(arg) for arg in non_none_args]}
-        elif origin is list or origin is List:
-            return {
-                "type": "array",
-                "items": {"type": get_type_str(args[0]) if args else "any"}
-            }
-        elif origin is dict or origin is Dict:
-            return {
-                "type": "object",
-                "additionalProperties": {"type": get_type_str(args[1]) if len(args) > 1 else "any"}
-            }
-        else:
-            return 'object'
-    elif isinstance(annotation, type):
-        # Handle subclasses of built-in types
-        for base_type, json_type in type_map.items():
-            if issubclass(annotation, base_type):
-                return json_type
-    return 'string'  # Default to 'string' if type is unrecognized

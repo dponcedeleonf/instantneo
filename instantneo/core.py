@@ -1,4 +1,3 @@
-# core.py
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Callable, Optional, Union, Generator
 import asyncio
@@ -128,13 +127,13 @@ class InstantNeo:
         self.tool_calls = []  # For accumulating tool calls in streaming
 
     def add_skill(self, skill: Callable):
-        self.skill_manager.add_skill(skill)
+        self.skill_manager.register_skill(skill)
 
     def remove_skill(self, skill_name: str):
         self.skill_manager.remove_skill(skill_name)
 
     def list_skills(self) -> List[str]:
-        return self.skill_manager.list_skills()
+        return self.skill_manager.get_skill_names()
 
     def _create_adapter(self):
         if self.config.provider == "openai":

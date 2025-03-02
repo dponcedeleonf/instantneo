@@ -7,7 +7,8 @@ setup(
     install_requires=[
         'openai',
         'typing',
-        'anthropic'
+        'anthropic',
+        'docstring_parser'
     ],
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
