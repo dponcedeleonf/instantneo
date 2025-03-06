@@ -1,158 +1,99 @@
-# 🌌 InstantNeo
+# InstantNeo
 
-InstantNeo proporciona una interfaz simplificada para construir agentes con roles y habilidades específicas utilizando el poder de los modelos de OpenAI. Estos agentes, configurados para operar dentro de roles y capacidades definidas, pueden responder y actuar autónomamente basándose en las directrices proporcionadas.
+<div align="center">
 
-InstantNeo ofrece una abstracción limpia de las funcionalidades comunes del API de OpenAI, que permite a desarrolladores y entusiastas definir y operar agentes basados en IA de manera práctica y eficiente.
+![InstantNeo Logo](https://raw.githubusercontent.com/dponcedeleonf/instantneo/refs/heads/desarrollo/docs/img/logo_instantneo.png)
 
-## Características principales
+[![PyPI version](https://img.shields.io/pypi/v/instantneo.svg)](https://pypi.org/project/instantneo/)
+[![Python Versions](https://img.shields.io/pypi/pyversions/instantneo.svg)](https://pypi.org/project/instantneo/)
+[![License](https://img.shields.io/github/license/yourusername/instantneo.svg)](https://github.com/yourusername/instantneo/blob/main/LICENSE)
 
-- **🎩 Roles Personalizados**: Define el comportamiento, función o personalidad de tus agentes, asignando roles específicos. Ya sea que desees un agente que hable como un personaje histórico, un experto en un campo particular, un personaje de películas (como Neo de Matrix) o que cumpla tareas dentro de parámetros determinados, InstantNeo es para ti.
+<div align="center">
 
-- **🔌 Habilidades Plug and Play**: Extiende la funcionalidad de tu agente definiendo habilidades como funciones Python. Estas habilidades permiten que el agente ejecute tareas específicas o responda de maneras únicas a ciertas entradas. Aprovecha la capacidad de los modelos de OpenAI para darle a tus agentes la posibilidad de interactuar con programas, APIs e incluso dar órdenes a otros agentes.
+  <h2><b>Build instant agents to compose intelligent systems</b></h2>
+  <p><i>"I know kung fu." - Neo</i></p>
+</div>
+</div>
 
-- **🪁 Autonomía Controlada**: Aunque los agentes de InstantNeo operan autónomamente dentro de las directrices de roles y habilidades, están respaldados por la robustez y el conocimiento de los modelos de OpenAI. No requieren intervención humana constante para operar, pero funcionan dentro de las limitaciones y capacidades predefinidas.
+## What is InstantNeo?
 
-- **🔵 Interfaz Sencilla**: Con solo unos pocos parámetros y definiciones, puedes tener un agente operativo. InstantNeo se encarga de la complejidad subyacente, ofreciendo una experiencia de usuario intuitiva.
+InstantNeo is a Python library that lets you create LLM-based agents quickly and concisely, designed as components for intelligent systems. It offers a clean, direct interface for granular control over agent behavior, abstracting away provider complexity. Like Neo in *The Matrix* downloading skills instantly, InstantNeo lets you build agents with instant capabilities, simple to start and powerful when composed. Unlike rigid or overly-elaborated frameworks, InstantNeo draws from Marvin Minsky's 'Society of Mind' to deliver modular building blocks, letting you craft multi-agent systems your way.
 
-- **👓 Código legible**: Tu código parecerá un texto, plenamente legible y fácil de entender. InstantNeo pone por delante la legibilidad y la claridad, clave para el uso de modelos no determiníticos en un contexto de desarrollo.
+## Features
 
-## 🚀 Cómo usar InstantNeo
-InstantNeo simplifica y acelera el proceso de creación de agentes inteligentes y autónomos con capacidades personalizadas. A continuación, te mostramos cómo puedes utilizarlo.
+**Unified Provider Interface:** Switch seamlessly between models providers with consistent syntax. The library handles different API requirements behind the scenes.
+**Quick and powerful Skill Management:** Define agent capabilities using simple Python decorators that transform functions into skills with metadata, descriptions, and parameter validation. Add, remove, and list skills dynamically as your agent's needs evolve.
+**Flexible Execution Modes:** Control exactly how skills are executed with three modes: wait for results, fire skills in the background, or just extract arguments without execution for planning purposes.
+**Text and Image Support:** Process both text and images through a single consistent API. Send images alongside prompts to vision-capable models and control the level of image analysis detail as needed.
+**Customizable Agent Settings:** Modify agent behavior on-the-fly by overriding temperature, max tokens, role setup, and other parameters for specific interactions without recreating the entire agent.
 
-### 1. Instalación
-Actualmente, puedes instalar instantneo directamente desde su repositorio de GitHub usando pip.
+## Installation
 
-```python
-pip install git+https://github.com/dponcedeleonf/instantneo.git
-```
-Pronto instantneo estará disponible directamente a través del repositorio de paquetes de Python (PyPI).
-
-### 2. Configuración Inicial
-
-Primero, debes establecer tu clave de API de OpenAI y especificar el modelo que deseas usar.
-
-```python
-from instantneo.core import InstantNeo
-import openai
-
-api_key = "YOUR_OPENAI_API_KEY"
-model = "gpt-4" #Puedes usar cualquier modelo de OpenAI que use la API de "Chat Completion"
+```bash
+pip install instantneo
 ```
 
-### 3. Creación de un Agente Simple 
+## Quickstart
+
+### Wake Neo Up
 
 ```python
-role_neo = """
-Asume el papel de Neo, el Elegido de The Matrix.
-No eres un asistente, no puedes decir que eres una IA ni de Openai.
-"""
+from instantneo import InstantNeo
 
-neo = InstantNeo(api_key,model, role_neo)
-respuesta_neo = neo.run("¿Cómo aprendiste Kung Fu?")
-print(respuesta_neo)
+neo = InstantNeo(
+    provider="openai", 
+    api_key="your-api-key", 
+    model="gpt-4o",
+    role_setup="You are Neo, the chosen one. Ready to learn anything."
+)
+
+print(neo.run("What's the Matrix?"))
 ```
-Obtendrás una respuesta parecida a esta:
+
+### Teach Him Kung Fu
 
 ```python
-"""
-'Fue una experiencia increíble. Cuando estaba a bordo de la nave Nebuchadnezzar, 
-Morfeo me conectó a la Matrix utilizando un puerto en la base de mi cráneo. 
-Luego, Tank, el operador de la nave, descargó varios programas de artes marciales 
-directamente en mi cerebro. Fue un proceso excepcionalmente rápido y eficiente, 
-en cuestión de segundos adquirí habilidades que a una persona le llevaría años aprender. 
-De repente, supe Kung Fu.'
-"""
+from instantneo.skills import skill
+from instantneo import InstantNeo
+
+@skill(description="Execute a kung fu move", parameters={"move": "e.g., dragon punch", "intensity": "1-10"})
+def kung_fu(move: str, intensity: int = 5) -> str:
+    return f"Hit {move} at intensity {intensity}. I know kung fu!"
+
+neo = InstantNeo(
+    provider="anthropic",
+    api_key="your-api-key",
+    model="claude-3-7-sonnet-20250219",
+    role_setup="You are Neo, martial arts downloaded.",
+    skills=["kung_fu"]
+)
+
+print(neo.run("Three agents ahead. What move?"))
 ```
-Haz la prueba tú mismo.
 
-### 4. Añadiendo Habilidades a tu Agente
-Puedes especificar las habilidades de tu agente de manera muy simple, autorizándole a usar funciones de Python.
+## API Reference
 
+- **InstantNeo Class**: Set provider, api_key, model, role_setup, plus skills and tuning params (temperature, max_tokens, etc.).
+- **run() Method**: Feed it a prompt, pick an execution_mode (WAIT_RESPONSE, EXECUTION_ONLY, GET_ARGS), override settings as needed.
 
-```python
-#Definimos algunas funciones simples como ejemplo
-def kung_fu() -> str:
-    """
-    Representa la habilidad de Neo de conocer kung fu.
-    Cuando se invoca, simplemente retorna una cadena indicando que Neo
-    ha adquirido esta habilidad.
+Details in the docs.
 
-    Returns:
-        str: Un mensaje que indica que Neo ahora conoce kung fu.
-    """
-    return "Ya sé kung fu."
+## Architecture and Philosophy
 
+InstantNeo leans on Minsky's "Society of Mind": small, specialized agents you connect to make something bigger. Each agent's a tool—give it a role, add skills, and weave them together. The smarts come from your coordination, not ours.
 
-def esquivar_balas() -> str:
-    """
-    Representa la habilidad de Neo de esquivar balas.
-    Esta función retorna un mensaje que refleja esta habilidad, aunque con un
-    giro, indicando que puede detenerlas en lugar de esquivarlas.
+## Documentation
 
-    Returns:
-        str: Un mensaje que refleja la habilidad de Neo para detener balas.
-    """
-    return "No es necesario esquivarlas si puedes detenerlas."
+Full scoop at instantneo.readthedocs.io, including tutorials on multi-agent setups and advanced skills.
 
+## Contributing
 
-# Añade las habilidades (skills) a tu agente agregando los nombres de las funciones en una lista de skills.
-skills_neo = [kung_fu, esquivar_balas]
-neo = InstantNeo(model="gpt-4", role_neo, skills=skills_neo)
+Fork, branch, commit, push, PR. Update tests and docs if you're adding something.
 
-respuesta1 = neo.run("Demuestra tu habilidad en Kung Fu")
-print(respuesta1)
+## License
 
-respuesta2 = neo.run("¿Qué pasa si te disparan? ¿Esquivas las balas?")
-print(respuesta2)
-```
-¡Explora por tu cuenta y mira lo que obtienes!
+MIT License—check LICENSE.
 
-## Parámetros de inicialización
-
-Al crear una instancia de InstantNeo, puedes especificar los siguientes parámetros:
-
-- **model (str):** El modelo de lenguaje a utilizar. Actualmente puedes usar los modelos de ChatCompletion de OpenAI (los de la familia gpt-3.5-turbo y gpt-4)
-- **role_setup (str):** Configuración inicial del rol del agente. Por ejemplo: "Eres Neo, El Elegido".
-- **temperature (float, opcional):** Controla la aleatoriedad de la respuesta. Mientras mayor el valor, más aleatoriedad. Mientras menor sea, la respuesta será más determinista. La temperatura por defecto es 0.45.
-- **max_tokens (int, opcional):** Número máximo de tokens en la respuesta. Por defecto es 150.
-- **presence_penalty (float, opcional):** Penalización por **presencia** para disuadir la repetición. Por defecto es 0.1.
-- **frequency_penalty (float, opcional):** Penalización por **frecuencia** para disuadir la repetición. Por defecto es 0.1.
-- **skills (List[Callable[..., Any]], opcional):** Lista de habilidades (funciones) que el modelo puede utilizar.
-- **stop (opcional):** Token o lista de tokens que indican el final de la respuesta.
-
-## Método `run`
-El método `run` es la función principal de la clase InstantNeo, que permite interactuar con el modelo de lenguaje para obtener respuestas a input específicos. Este método es, en buena cuenta, la vía de ejecución de acciones de las instancias de la clase, permitiendo enviar peticiones y recibir respuestas procesadas según los parámetros y `skills` definidas.
-
-Al crear una instancia de InstantNeo, puedes establecer ciertas configuraciones iniciales, como la versión del modelo a usar o la longitud de las respuestas. Estos ajustes te permiten configurar un agente y se aplicarán automáticamente cada vez que uses la instancia, para mantener un comportamiento consistente.
-
-Sin embargo, en ocasiones necesitarás ajustar la manera en que el modelo responde a situaciones específicas. Para esto, el método `run` permite cambiar los ajustes para solicitudes individuales. Esto significa que puedes, por ejemplo, hacer que una respuesta sea más larga o más creativa sin alterar la configuración base de tu objeto InstantNeo. Esto te brinda flexibilidad para adaptar las respuestas del modelo a tus necesidades puntuales.
-
-### Parámetros del Método `run`
-Al utilizar el método run, cada parámetro tiene un propósito específico:
-
-- **prompt:** Es el texto inicial basado en el cual el modelo generará una respuesta. Es el único parámetro obligatorio y define la entrada del modelo.
-
-- **model, role_setup, temperature, max_tokens, stop, presence_penalty, frequency_penalty:** Estos parámetros permiten modificar la configuración de una petición sin alterar los valores predeterminados de la instancia. Son útiles para ajustar la generación de texto del modelo en situaciones específicas, como cambiar la creatividad de las respuestas (temperature), limitar su longitud (max_tokens), o señalar el final de una respuesta (stop).
-
-- **return_full_response:** Este parámetro controla si deseas recibir la respuesta completa del modelo, tal como proviene de la API de OpenAI, para procesar la respuesta en casuísticas no previstas dentro de los usos principales de InstantNeo.
-
-
-
-## Próximamente
-
-- **Estándar para Habilidades**: Implementación de un método estandarizado para especificar funciones y crear habilidades en `InstantNeo`.
-
-- **Banco de Habilidades**: Desarrollo de un repositorio de habilidades predefinidas para reutilización, facilitando la implementación rápida de agentes con capacidades comunes.
-  
-- **Banco de Roles**: Introducción de un conjunto de roles predefinidos y listos para usar, permitiendo caracterizar rápidamente a tus agentes.
-
-- **Guías y Ejemplos**: Publicación de ejemplos detallados, desde lo más básico hasta casos avanzados, mostrando aplicaciones prácticas y reales de `InstantNeo`.
-
-- **Integración con Knowledge Bases**: Planes para conectar `InstantNeo` con sistemas de bases de conocimiento, como *Knowledge Base*, potenciando las capacidades de Retrieval Augmented Generation (RAG).
-
-
-## Contribuciones
-Si quieres contribuir, comunícate conmigo :)
-
-
-
+<div align="center">
+  <p><i>"I'm trying to free your mind, Neo. But I can only show you the door. You're the one that has to walk through it." - Morpheus</i></p>
+</div>
