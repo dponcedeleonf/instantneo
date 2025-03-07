@@ -6,7 +6,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/instantneo.svg)](https://pypi.org/project/instantneo/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/instantneo.svg)](https://pypi.org/project/instantneo/)
-[![License](https://img.shields.io/github/license/yourusername/instantneo.svg)](https://github.com/yourusername/instantneo/blob/main/LICENSE)
+[![License](https://img.shields.io/github/license/dponcedeleonf/instantneo.svg)](https://github.com/dponcedeleonf/instantneo/blob/main/LICENSE)
 
 <div align="center">
 
