@@ -21,11 +21,11 @@ InstantNeo is a Python library that lets you create LLM-based agents quickly and
 
 ## Features
 
--**Unified Provider Interface:** Switch seamlessly between models providers with consistent syntax. The library handles different API requirements behind the scenes.
--**Quick and powerful Skill Management:** Define agent capabilities using simple Python decorators that transform functions into skills with metadata, descriptions, and parameter validation. Add, remove, and list skills dynamically as your agent's needs evolve.
--**Flexible Execution Modes:** Control exactly how skills are executed with three modes: wait for results, fire skills in the background, or just extract arguments without execution for planning purposes.
--**Text and Image Support:** Process both text and images through a single consistent API. Send images alongside prompts to vision-capable models and control the level of image analysis detail as needed.
--**Customizable Agent Settings:** Modify agent behavior on-the-fly by overriding temperature, max tokens, role setup, and other parameters for specific interactions without recreating the entire agent.
+- **Unified Provider Interface:** Switch seamlessly between models providers with consistent syntax. The library handles different API requirements behind the scenes.
+- **Quick and powerful Skill Management:** Define agent capabilities using simple Python decorators that transform functions into skills with metadata, descriptions, and parameter validation. Add, remove, and list skills dynamically as your agent's needs evolve.
+- **Flexible Execution Modes:** Control exactly how skills are executed with three modes: wait for results, fire skills in the background, or just extract arguments without execution for planning purposes.
+- **Text and Image Support:** Process both text and images through a single consistent API. Send images alongside prompts to vision-capable models and control the level of image analysis detail as needed.
+- **Customizable Agent Settings:** Modify agent behavior on-the-fly by overriding temperature, max tokens, role setup, and other parameters for specific interactions without recreating the entire agent.
 
 ## Installation
 
