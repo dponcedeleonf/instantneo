@@ -1,10 +1,11 @@
 import sys
 import os
-import pkgutil
+import asyncio
 import importlib
 import importlib.util
 import inspect
-from typing import Dict, List, Any, Union, Optional, Callable
+from concurrent.futures import ThreadPoolExecutor
+from typing import Dict, List, Any, Union, Optional, Callable, Tuple
 
 class SkillLoader:
     def __init__(self, manager: "SkillManager"):
@@ -37,14 +38,14 @@ class SkillLoader:
 
 class SkillManager:
     def __init__(self):
-        # Almacenamos el módulo del contexto en el que se instanció el manager
+        # Store the context module in which the manager was instantiated
         caller_frame = inspect.currentframe().f_back
         self.instantiation_module = inspect.getmodule(caller_frame)
 
         self.registry: Dict[str, Any] = {}
         self.registry_by_name: Dict[str, List[Any]] = {}
         self.duplicates: Dict[str, List[Any]] = {}
-        # Se instancia la clase auxiliar para carga de skills.
+        # Instantiate the auxiliary class for loading skills
         self.load_skills = SkillLoader(self)
 
 
@@ -58,15 +59,13 @@ class SkillManager:
             if simple_name not in self.duplicates:
                 self.duplicates[simple_name] = []
             self.duplicates[simple_name].append(func)
-            print(f"Advertencia: La skill '{simple_name}' ya fue registrada en "
+            print(f"Warning: The skill '{simple_name}' was already registered in  "
                   f"{self.registry_by_name[simple_name][0].__code__.co_filename}. "
-                  f"La definición en {file_path} se ha agregado al registro de duplicados.")
+                  f"The definition in {file_path} has been added to the duplicates registry.")
         else:
             self.registry_by_name[simple_name] = [func]
 
         self.registry[key] = func
-
-
 
     def _load_skills_from_module(self, module, 
                                       metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> None:
@@ -83,47 +82,119 @@ class SkillManager:
         self, 
         metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None
     ) -> None:
-        # Usamos directamente el módulo almacenado en el constructor
+        # We directly use the module stored in the constructor
         caller_module = self.instantiation_module
         if caller_module:
             self._load_skills_from_module(caller_module, metadata_filter)
         else:
-            raise RuntimeError("No se pudo determinar el módulo que instanció SkillManager.")
+            raise RuntimeError("Could not determine the module that instantiated SkillManager.")
 
     def _load_skills_from_file(self, file_path: str, 
-                             metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
+                         metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
         if not os.path.isfile(file_path):
-            raise ValueError(f"{file_path} no es un archivo válido.")
+            raise ValueError(f"{file_path} is not a valid file.")
         
-        module_name = os.path.splitext(os.path.basename(file_path))[0]
-        spec = importlib.util.spec_from_file_location(module_name, file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        try:
+            module_name = os.path.splitext(os.path.basename(file_path))[0]
+            spec = importlib.util.spec_from_file_location(module_name, file_path)
+            
+            if spec is None or spec.loader is None:
+                raise ImportError(f"Could not create a spec for {file_path}")
+                
+            module = importlib.util.module_from_spec(spec)
+            
+            # Temporarily set up sys.modules to handle possible relative imports
+            sys.modules[module_name] = module
+            
+            try:
+                spec.loader.exec_module(module)
+            except Exception as e:
+                raise ImportError(f"Error executing module: {str(e)}")
 
-        registered = []
-        self._load_skills_from_module(module, metadata_filter)
-        for attr_name in dir(module):
-            attr = getattr(module, attr_name)
-            if callable(attr) and hasattr(attr, 'skill_metadata'):
-                registered.append(f"{attr.__module__}.{attr.__name__}")
+            registered = []
+            try:
+                self._load_skills_from_module(module, metadata_filter)
+                for attr_name in dir(module):
+                    attr = getattr(module, attr_name)
+                    if callable(attr) and hasattr(attr, 'skill_metadata'):
+                        skill_id = f"{module_name}.{attr.__name__}"
+                        registered.append(skill_id)
+            except Exception as e:
+                raise ValueError(f"Error processing skills in module: {str(e)}")
+                
+            return registered
+            
+        except Exception as e:
+            # Capture and forward the exception with clear information
+            raise Exception(f"Error loading {os.path.basename(file_path)}: {str(e)}")
+        finally:
+            # Clean up sys.modules if we added something temporarily
+            if module_name in sys.modules and sys.modules[module_name].__file__ == file_path:
+                del sys.modules[module_name]
+
+    def _load_skills_from_folder(self, folder_path: str,
+                            metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
+        registered, errors = asyncio.run(self._load_skills_from_folder_async(folder_path, metadata_filter))
+        
+        # Report errors if any
+        if errors:
+            error_count = len(errors)
+            file_count = len([f for f in os.listdir(folder_path) if f.endswith('.py')])
+            print(f"⚠️ {error_count} of {file_count} files could not be loaded properly:")
+            for file_name, error in errors.items():
+                print(f"  - {file_name}: {error}")
+        
         return registered
-
-    def _load_skills_from_folder(self, folder_path: str, 
-                                metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
+    async def _load_skills_from_folder_async(self, folder_path: str,
+                                         metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> Tuple[List[str], Dict[str, str]]:
         if not os.path.isdir(folder_path):
-            raise ValueError(f"{folder_path} no es una carpeta válida.")
+            raise ValueError(f"{folder_path} is not a valid directory.")
         
+        # Find all Python files in the folder
+        python_files = [
+            os.path.join(folder_path, filename)
+            for filename in os.listdir(folder_path)
+            if filename.endswith('.py')
+        ]
+        
+        # Define an internal function that handles errors
+        def load_file_with_error_handling(file_path, metadata_filter):
+            try:
+                return self._load_skills_from_file(file_path, metadata_filter), None
+            except Exception as e:
+                error_msg = f"Error loading {os.path.basename(file_path)}: {str(e)}"
+                return [], error_msg
+        
+        # Create tasks to load each file
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor(max_workers=min(os.cpu_count(), 4)) as executor:
+            # Convert the synchronous method into asynchronous tasks using ThreadPoolExecutor
+            tasks = [
+                loop.run_in_executor(
+                    executor,
+                    load_file_with_error_handling,
+                    file_path,
+                    metadata_filter
+                )
+                for file_path in python_files
+            ]
+            
+            # Wait for all tasks to complete
+            results = await asyncio.gather(*tasks)
+        
+        # Combine all results and collect errors
         registered = []
-        for finder, name, ispkg in pkgutil.iter_modules([folder_path]):
-            module = importlib.import_module(name)
-            self._load_skills_from_module(module, metadata_filter)
-            for attr_name in dir(module):
-                attr = getattr(module, attr_name)
-                if callable(attr) and hasattr(attr, 'skill_metadata'):
-                    registered.append(f"{attr.__module__}.{attr.__name__}")
-        return registered
-
-    # Métodos de consulta y manejo del registro (se mantienen sin cambios)
+        errors = {}
+        
+        for i, (skills, error) in enumerate(results):
+            if skills:
+                registered.extend(skills)
+            if error:
+                file_name = os.path.basename(python_files[i])
+                errors[file_name] = error
+                
+        return registered, errors
+    # Query and registry management methods
     def get_skill_names(self) -> List[str]:
         return list({func.__name__ for func in self.registry.values()})
 
@@ -190,7 +261,7 @@ class SkillManager:
                 self.registry_by_name.pop(name, None)
                 return True
             else:
-                print(f"Advertencia: Existen múltiples skills con el nombre '{name}'. Especifica el módulo para eliminar.")
+                print(f"Warning: There are multiple skills with the name '{name}'. Please specify the module to remove.")
                 return False
 
     def clear_registry(self) -> None:
