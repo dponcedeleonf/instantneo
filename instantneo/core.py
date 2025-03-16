@@ -128,6 +128,8 @@ class InstantNeo:
 
     def add_skill(self, skill: Callable):
         self.skill_manager.register_skill(skill)
+        # TODO: Pensarlo mejor jeje Se puede modificar acá
+        #! self.config.skills.append(self.skill_manager.get_skill_metadata_by_name(skill.__name__))
 
     def remove_skill(self, skill_name: str):
         self.skill_manager.remove_skill(skill_name)
@@ -154,6 +156,8 @@ class InstantNeo:
         # Si se pasa skills=None, no incluir ninguna skill en la llamada
         if 'skills' not in kwargs or kwargs['skills'] is None:
             skills_to_use = self.config.skills
+            # TODO: A esto me referia jeje2
+            #! skills_to_use = self.config.skills + self.skill_manager.get_all_skills_metadata()
         else:
             skills_to_use = kwargs['skills']
         

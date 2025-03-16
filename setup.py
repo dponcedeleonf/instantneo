@@ -1,18 +1,33 @@
 from setuptools import setup, find_packages
+import sys
+
+# Detectar si es una instalación sin extras especificados
+is_direct_install = "install" in sys.argv and not any(arg.startswith("instantneo[") for arg in sys.argv)
+print(f"Instalación: {sys.argv}")
+# Dependencias base
+base_requires = ['docstring_parser']
+
+# Si es una instalación directa sin extras, agregar todas las dependencias
+install_requires = base_requires.copy()
+if is_direct_install:
+    print("\nAtención: Instalando instantneo con todas las dependencias.\n"
+          "Para una instalación más ligera, especifica: pip install instantneo[openai], "
+          "instantneo[anthropic], o instantneo[groq]\n")
+    install_requires.extend(['openai', 'anthropic', 'groq'])
 
 setup(
     name='instantneo',
-    version='0.2.1',
+    version='0.2.5',  # Incrementar la versión
     packages=find_packages() + ['instantneo.adapters',
-                                'instantneo.skills',
-                                'instantneo.utils'],
-    install_requires=[
-        'openai',
-        'typing',
-        'anthropic',
-        'groq',
-        'docstring_parser'
-    ],
+                              'instantneo.skills',
+                              'instantneo.utils'],
+    install_requires=install_requires,
+    extras_require={
+        'openai': ['openai'],
+        'anthropic': ['anthropic'],
+        'groq': ['groq'],
+        'all': ['openai', 'anthropic', 'groq']
+    },
     author='Diego Ponce de León Franco',
     author_email='dponcedeleonf@gmail.com',
     description='',
