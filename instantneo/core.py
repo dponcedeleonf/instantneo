@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Callable, Optional, Union, Generator
+from typing import List, Dict, Any, Callable, Optional, Union, Generator, Type, AsyncGenerator
 import asyncio
 import json
 import threading
@@ -8,36 +8,9 @@ from instantneo.utils.image_utils import process_images
 from instantneo.utils.skill_utils import format_tool
 
 @dataclass
-class InstantNeoParams:
-    provider: str
-    api_key: str
+class BaseParams:
+    """Base class for all parameter classes with common LLM parameters."""
     model: str
-    role_setup: str
-    skills: Optional[List[Callable[..., Any]]] = None
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = 200
-    presence_penalty: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    stop: Optional[Union[str, List[str]]] = None
-    logit_bias: Optional[Dict[int, float]] = None
-    seed: Optional[int] = None
-    stream: bool = False
-    images: Optional[Union[str, List[str]]] = None
-    image_detail: str = "auto"
-    skill_manager: Optional[SkillManager] = None # type: ignore
-
-@dataclass
-class RunParams:
-    prompt: str
-    execution_mode: str = "wait_response"
-    async_execution: bool = False
-    return_full_response: bool = False
-    additional_params: Dict[str, Any] = field(default_factory=dict)
-    
-    # Campos heredados de InstantNeoParams
-    model: str = None
-    role_setup: str = None
-    skills: Optional[List[str]] = None
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     presence_penalty: Optional[float] = None
@@ -46,17 +19,51 @@ class RunParams:
     logit_bias: Optional[Dict[int, float]] = None
     seed: Optional[int] = None
     stream: bool = False
-    images: Optional[Union[str, List[str]]] = None
-    image_detail: str = None
 
+@dataclass
+class InstantNeoParams(BaseParams):
+    """Parameters for initializing an InstantNeo instance."""
+    provider: str
+    api_key: str
+    role_setup: str
+    skills: Optional[Union[List[str], SkillManager]] = None
+    images: Optional[Union[str, List[str]]] = None
+    image_detail: str = "auto"
+
+@dataclass
+class RunParams(BaseParams):
+    """Parameters for a specific run."""
+    prompt: str
+    role_setup: Optional[str] = None
+    execution_mode: str = "wait_response"
+    async_execution: bool = False
+    return_full_response: bool = False
+    skills: Optional[Union[List[str], SkillManager]] = None
+    images: Optional[Union[str, List[str]]] = None
+    image_detail: Optional[str] = None
+    additional_params: Dict[str, Any] = field(default_factory=dict)
+    
     @classmethod
     def from_instantneo_params(cls, instantneo_params: InstantNeoParams, prompt: str, **kwargs):
-        run_params = cls(prompt=prompt)
-        for field in InstantNeoParams.__dataclass_fields__:
-            if field not in ['provider', 'api_key']:
-                value = getattr(instantneo_params, field)
-                setattr(run_params, field, value)
+        """Create a RunParams instance from InstantNeoParams."""
+        run_params = cls(
+            prompt=prompt,
+            model=instantneo_params.model,
+            role_setup=instantneo_params.role_setup,
+            temperature=instantneo_params.temperature,
+            max_tokens=instantneo_params.max_tokens,
+            presence_penalty=instantneo_params.presence_penalty,
+            frequency_penalty=instantneo_params.frequency_penalty,
+            stop=instantneo_params.stop,
+            logit_bias=instantneo_params.logit_bias,
+            seed=instantneo_params.seed,
+            stream=instantneo_params.stream,
+            skills=instantneo_params.skills,
+            images=instantneo_params.images,
+            image_detail=instantneo_params.image_detail,
+        )
         
+        # Override with any provided kwargs
         for key, value in kwargs.items():
             if hasattr(run_params, key):
                 setattr(run_params, key, value)
@@ -66,21 +73,14 @@ class RunParams:
         return run_params
 
 @dataclass
-class AdapterParams:
-    model: str
+class AdapterParams(BaseParams):
+    """Parameters for adapter-specific operations."""
     messages: List[Dict[str, Any]]
-    temperature: Optional[float] = None
-    max_tokens: Optional[int] = None
-    presence_penalty: Optional[float] = None
-    frequency_penalty: Optional[float] = None
-    stop: Optional[Union[str, List[str]]] = None
-    logit_bias: Optional[Dict[int, float]] = None
-    seed: Optional[int] = None
-    stream: bool = False
     additional_params: Dict[str, Any] = field(default_factory=dict)
-
+    
     @classmethod
     def from_run_params(cls, run_params: RunParams, messages: List[Dict[str, Any]]):
+        """Create an AdapterParams instance from RunParams."""
         adapter_params = cls(
             model=run_params.model,
             messages=messages,
@@ -92,99 +92,233 @@ class AdapterParams:
             logit_bias=run_params.logit_bias,
             seed=run_params.seed,
             stream=run_params.stream,
-
         )
-        exclude_params = {'execution_mode', 'async_execution', 'return_full_response', 'prompt', 'role_setup', 'skills', 'images', 'image_detail'}
+        
+        # Exclude specific parameters from additional_params
+        exclude_params = {'execution_mode', 'async_execution', 'return_full_response', 
+                         'prompt', 'role_setup', 'skills', 'images', 'image_detail'}
+        
         adapter_params.additional_params = {
             k: v for k, v in run_params.additional_params.items() 
             if k not in exclude_params
         }
+        
         return adapter_params
-
+    
     def to_dict(self) -> Dict[str, Any]:
+        """Convert the adapter parameters to a dictionary."""
         result = {k: v for k, v in self.__dict__.items() if v is not None and k != 'additional_params'}
         result.update(self.additional_params)
         return result
 
 @dataclass
 class ImageConfig:
+    """Configuration for image processing."""
     images: Union[str, List[str]]
     image_detail: str = "auto"
     convert_to_base64: bool = True
 
 class InstantNeo:
+    """Main class for interacting with language models."""
     WAIT_RESPONSE = "wait_response"
     EXECUTION_ONLY = "execution_only"
     GET_ARGS = "get_args"
-
-    def __init__(self, **kwargs):
-        self.config = InstantNeoParams(**kwargs)
+    
+    def __init__(
+        self,
+        provider: str,
+        api_key: str,
+        model: str,
+        role_setup: str,
+        skills: Optional[Union[List[str], SkillManager]] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = 200,
+        presence_penalty: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
+        stop: Optional[Union[str, List[str]]] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        seed: Optional[int] = None,
+        stream: bool = False,
+        images: Optional[Union[str, List[str]]] = None,
+        image_detail: str = "auto",
+    ):
+        """Initialize an InstantNeo instance with explicit parameters."""
+        self.config = InstantNeoParams(
+            provider=provider,
+            api_key=api_key,
+            model=model,
+            role_setup=role_setup,
+            skills=skills,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            frequency_penalty=frequency_penalty,
+            stop=stop,
+            logit_bias=logit_bias,
+            seed=seed,
+            stream=stream,
+            images=images,
+            image_detail=image_detail,
+        )
         
-        #? Buscar una forma de hacerlo global y no pasarlo como parametro
-        self.skill_manager = self.config.skill_manager or SkillManager()
-                    
+        # Initialize skill manager
+        if isinstance(self.config.skills, SkillManager):
+            self.skill_manager = self.config.skills
+        else:
+            self.skill_manager = SkillManager()
+            if self.config.skills and isinstance(self.config.skills, list):
+                for skill in self.config.skills:
+                    self.skill_manager.register_skill(skill)
+        
         self.adapter = self._create_adapter()
         self.tool_calls = []  # For accumulating tool calls in streaming
-
-    def add_skill(self, skill: Callable):
-        self.skill_manager.register_skill(skill)
-        # TODO: Pensarlo mejor jeje Se puede modificar acá
-        #! self.config.skills.append(self.skill_manager.get_skill_metadata_by_name(skill.__name__))
-
-    def remove_skill(self, skill_name: str):
-        self.skill_manager.remove_skill(skill_name)
-
-    def list_skills(self) -> List[str]:
+        self.async_execution = False  # Default value, will be set in run method
+    
+    # SkillManager delegated methods
+    def register_skill(self, skill: Callable) -> None:
+        """Register a skill in the SkillManager."""
+        return self.skill_manager.register_skill(skill)
+    
+    def get_skill_names(self) -> List[str]:
+        """Get the names of all registered skills."""
         return self.skill_manager.get_skill_names()
-
+    
+    def get_skill_by_name(self, name: str) -> Union[Any, Dict[str, Any], None]:
+        """Get a skill by its name."""
+        return self.skill_manager.get_skill_by_name(name)
+    
+    def get_skill_metadata_by_name(self, name: str) -> Dict[str, Any]:
+        """Get the metadata of a skill by its name."""
+        return self.skill_manager.get_skill_metadata_by_name(name)
+    
+    def get_skills_by_tag(self, tag: str, return_keys: bool = False) -> Union[List[str], Dict[str, Any]]:
+        """Get skills by tag."""
+        return self.skill_manager.get_skills_by_tag(tag, return_keys)
+    
+    def get_all_skills_metadata(self) -> Dict[str, Dict[str, Any]]:
+        """Get the metadata of all skills."""
+        return self.skill_manager.get_all_skills_metadata()
+    
+    def get_duplicate_skills(self) -> Dict[str, List[Any]]:
+        """Get duplicate skills."""
+        return self.skill_manager.get_duplicate_skills()
+    
+    def remove_skill(self, skill_name: str, module: Optional[str] = None) -> bool:
+        """Remove a skill by its name."""
+        return self.skill_manager.remove_skill(skill_name, module)
+    
+    def update_skill_metadata(self, key: str, new_metadata: Dict[str, Any]) -> bool:
+        """Update the metadata of a skill."""
+        return self.skill_manager.update_skill_metadata(key, new_metadata)
+    
+    def clear_registry(self) -> None:
+        """Clear the skill registry."""
+        return self.skill_manager.clear_registry()
+    
+    @property
+    def load_skills(self):
+        """Access to the SkillLoader for loading skills from different sources."""
+        return self.skill_manager.load_skills
+    
+    # Backward compatibility methods
+    def add_skill(self, skill: Callable):
+        """Alias for register_skill for backward compatibility."""
+        return self.register_skill(skill)
+    
+    def list_skills(self) -> List[str]:
+        """Alias for get_skill_names for backward compatibility."""
+        return self.get_skill_names()
+    
     def _create_adapter(self):
-        if self.config.provider == "openai":
-            from instantneo.adapters.openai_adapter import OpenAIAdapter
-            return OpenAIAdapter(self.config.api_key)
-        elif self.config.provider == "anthropic":
-            from instantneo.adapters.anthropic_adapter import AnthropicAdapter
-            return AnthropicAdapter(self.config.api_key)
-        elif self.config.provider == "groq":
-            from instantneo.adapters.groq_adapter import GroqAdapter
-            return GroqAdapter(self.config.api_key)
-        else:
+        """Create an adapter based on the provider."""
+        adapter_map = {
+            "openai": ("instantneo.adapters.openai_adapter", "OpenAIAdapter"),
+            "anthropic": ("instantneo.adapters.anthropic_adapter", "AnthropicAdapter"),
+            "groq": ("instantneo.adapters.groq_adapter", "GroqAdapter"),
+        }
+        
+        if self.config.provider not in adapter_map:
             raise ValueError(f"Unsupported provider: {self.config.provider}")
-
-    def run(self, prompt: str, **kwargs):
-        print("Skills available at the start of run:", self.config.skills)
-        print("Skills passed to run:", kwargs.get('skills'))
-        # Si se pasa skills=None, no incluir ninguna skill en la llamada
-        if 'skills' not in kwargs or kwargs['skills'] is None:
-            skills_to_use = self.config.skills
-            # TODO: A esto me referia jeje2
-            #! skills_to_use = self.config.skills + self.skill_manager.get_all_skills_metadata()
-        else:
-            skills_to_use = kwargs['skills']
+        
+        module_path, class_name = adapter_map[self.config.provider]
+        module = __import__(module_path, fromlist=[class_name])
+        adapter_class = getattr(module, class_name)
+        
+        return adapter_class(self.config.api_key)
+    
+    def run(
+        self,
+        prompt: str,
+        execution_mode: str = "wait_response",
+        async_execution: bool = False,
+        return_full_response: bool = False,
+        model: Optional[str] = None,
+        role_setup: Optional[str] = None,
+        skills: Optional[List[str]] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        presence_penalty: Optional[float] = None,
+        frequency_penalty: Optional[float] = None,
+        stop: Optional[Union[str, List[str]]] = None,
+        logit_bias: Optional[Dict[int, float]] = None,
+        seed: Optional[int] = None,
+        stream: Optional[bool] = None,
+        images: Optional[Union[str, List[str]]] = None,
+        image_detail: Optional[str] = None,
+        **additional_params
+    ):
+        """Run a prompt through the language model with explicit parameters."""
+        # Determine which skills to use
+        skills_to_use = skills if skills is not None else (
+            [name for name in self.get_skill_names()] if self.config.skills is None 
+            else self.config.skills
+        )
         
         print(f"Skills to be used in this run: {skills_to_use}")
-
-
-        run_params = RunParams.from_instantneo_params(self.config, prompt, **kwargs)
-        run_params.skills = skills_to_use
+        
+        # Create RunParams with explicit parameters
+        run_params = RunParams(
+            prompt=prompt,
+            model=model if model is not None else self.config.model,
+            role_setup=role_setup if role_setup is not None else self.config.role_setup,
+            execution_mode=execution_mode,
+            async_execution=async_execution,
+            return_full_response=return_full_response,
+            skills=skills_to_use,
+            temperature=temperature if temperature is not None else self.config.temperature,
+            max_tokens=max_tokens if max_tokens is not None else self.config.max_tokens,
+            presence_penalty=presence_penalty if presence_penalty is not None else self.config.presence_penalty,
+            frequency_penalty=frequency_penalty if frequency_penalty is not None else self.config.frequency_penalty,
+            stop=stop if stop is not None else self.config.stop,
+            logit_bias=logit_bias if logit_bias is not None else self.config.logit_bias,
+            seed=seed if seed is not None else self.config.seed,
+            stream=stream if stream is not None else self.config.stream,
+            images=images if images is not None else self.config.images,
+            image_detail=image_detail if image_detail is not None else self.config.image_detail,
+        )
+        
+        # Add any additional parameters
+        for key, value in additional_params.items():
+            run_params.additional_params[key] = value
         
         if run_params.execution_mode not in [self.WAIT_RESPONSE, self.EXECUTION_ONLY, self.GET_ARGS]:
             raise ValueError(f"Invalid execution_mode: {run_params.execution_mode}")
-
+        
         self.async_execution = run_params.async_execution
-
+        
         active_skills = self._get_active_skills(skills_to_use)
         print(f"Active skills for this run: {list(active_skills.keys())}")
-
+        
         image_config = self._get_image_config(run_params)
-
+        
         messages = self._prepare_messages(run_params.prompt, image_config)
-
+        
         adapter_params = AdapterParams.from_run_params(run_params, messages)
-
+        
         if active_skills:
             formatted_tools = []
             for name, skill in active_skills.items():
-                skill_info = self.skill_manager.get_skill_metadata_by_name(name)
+                skill_info = self.get_skill_metadata_by_name(name)
                 if skill_info and 'parameters' in skill_info:
                     formatted_tools.append(format_tool(skill_info))
                 else:
@@ -194,38 +328,45 @@ class InstantNeo:
                 adapter_params.additional_params['tools'] = formatted_tools
                 if 'tool_choice' in run_params.additional_params:
                     adapter_params.additional_params['tool_choice'] = run_params.additional_params['tool_choice']
-
+        
         print("Adapter params:", json.dumps(adapter_params.to_dict(), indent=2))
-
+        
         if run_params.stream:
             return self._handle_streaming_response(adapter_params, run_params.execution_mode, run_params.return_full_response)
         else:
             return self._handle_normal_response(adapter_params, run_params.execution_mode, run_params.return_full_response)
-
-    def _get_active_skills(self, skills: List[str]) -> Dict[str, Callable]:
+    
+    def _get_active_skills(self, skills: Optional[List[str]]) -> Dict[str, Callable]:
+        """Get active skills based on the provided skill names."""
         active_skills = {}
-        if skills:
-            for skill_name in skills:
-                skill = self.skill_manager.get_skill_by_name(skill_name)
-                if skill:
-                    active_skills[skill_name] = skill
-                else:
-                    print(f"Warning: Skill '{skill_name}' not found in SkillManager.")
+        if not skills:
+            return active_skills
+            
+        for skill_name in skills:
+            skill = self.get_skill_by_name(skill_name)
+            if skill:
+                active_skills[skill_name] = skill
+            else:
+                print(f"Warning: Skill '{skill_name}' not found in SkillManager.")
+        
         return active_skills
     
     def _get_image_config(self, run_params: RunParams) -> Optional[ImageConfig]:
+        """Get image configuration from run parameters."""
         if run_params.images:
             return ImageConfig(images=run_params.images, image_detail=run_params.image_detail)
         elif self.config.images:
             return ImageConfig(images=self.config.images, image_detail=self.config.image_detail)
         return None
-
+    
     def _process_images(self, image_config: ImageConfig) -> List[Dict[str, Any]]:
+        """Process images according to the configuration."""
         if not self.adapter.supports_images():
             raise ValueError(f"El proveedor actual no soporta el procesamiento de imágenes")
         return process_images(image_config.images, image_config.image_detail)
     
     def _prepare_messages(self, prompt: str, image_config: Optional[ImageConfig]=None) -> List[Dict[str, Any]]:
+        """Prepare messages for the language model."""
         messages = []
         if self.config.role_setup:
             messages.append({"role": "system", "content": self.config.role_setup})
@@ -236,29 +377,31 @@ class InstantNeo:
         else:
             messages.append({"role": "user", "content": prompt})
         return messages
-
+    
     def _process_response(self, response, execution_mode):
+        """Process the response from the language model."""
         if not hasattr(response, 'choices') or len(response.choices) == 0:
             print("No 'choices' were found in the response")
             return None
-
+        
         choice = response.choices[0]
         if not hasattr(choice, 'message'):
             print("No 'message' attribute found in the choice")
             return None
-
+        
         message = choice.message
         content = message.content if message.content else ''
         tool_calls = message.tool_calls if hasattr(message, 'tool_calls') else None
-
+        
         if tool_calls:
             print(f'{"*" * 40}\n* {"I am using my skills. Wait for it...":^36} *\n{"*" * 40}\n')
             results = self._handle_tool_calls(tool_calls, execution_mode)
             return results
         else:
             return content
-
+    
     def _handle_tool_calls(self, tool_calls, execution_mode):
+        """Handle tool calls from the language model."""
         results = []
         futures = []  # Para almacenar futures en caso de ejecución asíncrona
         print(f"DEBUG: Valor de self.async_execution en _handle_tool_calls: {self.async_execution}")
@@ -269,8 +412,8 @@ class InstantNeo:
                 function_args = json.loads(tool_call.function.arguments)
                 print(f"Llamando a la función: {function_name} con argumentos: {function_args}")
                 
-                if function_name in self.skill_manager.get_skill_names():
-                    skill = self.skill_manager.get_skill_by_name(function_name)
+                if function_name in self.get_skill_names():
+                    skill = self.get_skill_by_name(function_name)
                     
                     if execution_mode == self.EXECUTION_ONLY:
                         result = self._execute_skill(function_name, function_args)
@@ -335,9 +478,10 @@ class InstantNeo:
             return results
         else:  # WAIT_RESPONSE
             return results[0] if len(results) == 1 else results
-
+    
     def _execute_skill(self, skill_name: str, arguments: Dict[str, Any]):
-        skill = self.skill_manager.get_skill_by_name(skill_name)
+        """Execute a skill with the given arguments."""
+        skill = self.get_skill_by_name(skill_name)
         if skill is None:
             raise ValueError(f"Skill not found: {skill_name}")
         print(f"DEBUG: _execute_skill llamado para {skill_name} con async_execution={self.async_execution}")
@@ -351,11 +495,12 @@ class InstantNeo:
             return skill(**arguments)
     
     def _handle_streaming_response(self, adapter_params: AdapterParams, execution_mode: str, return_full_response: bool):
+        """Handle streaming responses from the language model."""
         print(f"DEBUG: Valor de self.async_execution en _handle_streaming_response: {self.async_execution}")
         stream = self.adapter.create_streaming_chat_completion(**adapter_params.to_dict())
         full_response = ""
         tool_calls = []
-
+        
         for chunk in stream:
             try:
                 if isinstance(chunk, int):
@@ -365,7 +510,7 @@ class InstantNeo:
                     chunk_data = json.loads(chunk)
                 else:
                     chunk_data = chunk
-
+                
                 if isinstance(chunk_data, dict) and 'choices' in chunk_data and chunk_data['choices']:
                     delta = chunk_data['choices'][0].get('delta', {})
                     content = delta.get('content')
@@ -384,14 +529,14 @@ class InstantNeo:
                     full_response += str(chunk_data)
                     if execution_mode == self.WAIT_RESPONSE:
                         yield str(chunk_data)
-
+            
             except json.JSONDecodeError:
                 full_response += str(chunk)
                 if execution_mode == self.WAIT_RESPONSE:
                     yield str(chunk)
             except Exception as e:
                 print(f"Error inesperado: {e}")
-
+        
         # Procesamos las herramientas según el modo de ejecución
         if tool_calls:
             if execution_mode == self.EXECUTION_ONLY:
@@ -433,7 +578,7 @@ class InstantNeo:
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
                         
-                        if function_name in self.skill_manager.get_skill_names():
+                        if function_name in self.get_skill_names():
                             if self.async_execution:
                                 result = self._execute_skill(function_name, function_args)
                                 futures.append(result)
@@ -465,14 +610,15 @@ class InstantNeo:
                 # Devolvemos los resultados
                 if results:
                     yield results[0] if len(results) == 1 else results
-
+        
         if return_full_response:
             yield {
                 "content": full_response,
                 "tool_calls": tool_calls
             }
-
+    
     def _handle_normal_response(self, adapter_params: AdapterParams, execution_mode: str, return_full_response: bool):
+        """Handle normal (non-streaming) responses from the language model."""
         response = self.adapter.create_chat_completion(**adapter_params.to_dict())
         if return_full_response:
             return response
