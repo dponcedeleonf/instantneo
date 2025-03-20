@@ -260,7 +260,9 @@ class InstantNeo:
 
     def _handle_tool_calls(self, tool_calls, execution_mode):
         results = []
-        threads = [] 
+        futures = []  # Para almacenar futures en caso de ejecución asíncrona
+        print(f"DEBUG: Valor de self.async_execution en _handle_tool_calls: {self.async_execution}")
+        
         for tool_call in tool_calls:
             if tool_call.type == 'function':
                 function_name = tool_call.function.name
@@ -271,22 +273,63 @@ class InstantNeo:
                     skill = self.skill_manager.get_skill_by_name(function_name)
                     
                     if execution_mode == self.EXECUTION_ONLY:
-                        thread = threading.Thread(target=skill, kwargs=function_args)
-                        threads.append(thread)
-                        thread.start()
-                        print(f"Función {function_name} ejecutada en un hilo separado")
+                        result = self._execute_skill(function_name, function_args)
+                        if self.async_execution:
+                            futures.append(result)
+                        print(f"Función {function_name} ejecutada usando EXECUTION_ONLY (async_execution={self.async_execution})")
                     elif execution_mode == self.GET_ARGS:
                         results.append({"name": function_name, "arguments": function_args})
                     else:  # WAIT_RESPONSE
-                        result = skill(**function_args)
-                        print(f"Resultado de {function_name}: {result}")
-                        results.append(result)
+                        if self.async_execution:
+                            results.append(self._execute_skill(function_name, function_args))
+                        else:
+                            result = self._execute_skill(function_name, function_args)
+                            results.append(result)
                 else:
                     print(f"Función {function_name} no encontrada en las skills disponibles")
         
+        # Si estamos en modo WAIT_RESPONSE y async_execution=True, ejecutamos todas las corrutinas
+        # de manera síncrona para esperar los resultados
+        if execution_mode == self.WAIT_RESPONSE and self.async_execution and results:
+            try:
+                # Usamos el event loop existente o creamos uno nuevo si es necesario
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Ejecutamos todas las corrutinas y esperamos los resultados
+                if loop.is_running():
+                    # Si el loop ya está corriendo, usamos asyncio.gather con ensure_future
+                    futures = [asyncio.ensure_future(result) for result in results]
+                    results = loop.run_until_complete(asyncio.gather(*futures))
+                else:
+                    # Si el loop no está corriendo, simplemente ejecutamos gather
+                    results = loop.run_until_complete(asyncio.gather(*results))
+                
+                print(f"Resultados de ejecución asíncrona: {results}")
+            except Exception as e:
+                print(f"Error al ejecutar corrutinas de manera asíncrona: {e}")
+        
+        # Si estamos en modo EXECUTION_ONLY y async_execution=True, esperamos a que terminen las ejecuciones
+        if execution_mode == self.EXECUTION_ONLY and self.async_execution and futures:
+            try:
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                if loop.is_running():
+                    futures = [asyncio.ensure_future(future) for future in futures]
+                    loop.run_until_complete(asyncio.gather(*futures))
+                else:
+                    loop.run_until_complete(asyncio.gather(*futures))
+            except Exception as e:
+                print(f"Error al ejecutar corrutinas en modo EXECUTION_ONLY: {e}")
+        
         if execution_mode == self.EXECUTION_ONLY:
-            for thread in threads:
-                thread.join()
             return "Todas las funciones se han ejecutado en segundo plano."
         elif execution_mode == self.GET_ARGS:
             return results
@@ -297,15 +340,18 @@ class InstantNeo:
         skill = self.skill_manager.get_skill_by_name(skill_name)
         if skill is None:
             raise ValueError(f"Skill not found: {skill_name}")
+        print(f"DEBUG: _execute_skill llamado para {skill_name} con async_execution={self.async_execution}")
         if self.async_execution:
+            print(f"ASYNC_EXECUTION: Preparando {skill_name} para ejecución asíncrona")
+            # Solo preparamos la función para ejecución asíncrona, no la ejecutamos todavía
             loop = asyncio.get_event_loop()
-            result = loop.run_in_executor(None, skill, **arguments)
-            print(f"Resultado de {skill_name}: {result}")
-            return result
+            return loop.run_in_executor(None, lambda skill, arguments: skill(**arguments), skill, arguments)
         else:
+            print(f"SYNC_EXECUTION: Ejecutando {skill_name} de forma síncrona")
             return skill(**arguments)
     
     def _handle_streaming_response(self, adapter_params: AdapterParams, execution_mode: str, return_full_response: bool):
+        print(f"DEBUG: Valor de self.async_execution en _handle_streaming_response: {self.async_execution}")
         stream = self.adapter.create_streaming_chat_completion(**adapter_params.to_dict())
         full_response = ""
         tool_calls = []
@@ -346,12 +392,79 @@ class InstantNeo:
             except Exception as e:
                 print(f"Error inesperado: {e}")
 
-        if execution_mode == self.EXECUTION_ONLY:
-            for tool_call in tool_calls:
-                self._execute_skill(tool_call.function.name, json.loads(tool_call.function.arguments))
-            yield "Todas las funciones se han ejecutado en segundo plano."
-        elif execution_mode == self.GET_ARGS:
-            yield tool_calls
+        # Procesamos las herramientas según el modo de ejecución
+        if tool_calls:
+            if execution_mode == self.EXECUTION_ONLY:
+                print(f"DEBUG: En streaming, usando _execute_skill con async_execution={self.async_execution}")
+                futures = []
+                for tool_call in tool_calls:
+                    result = self._execute_skill(tool_call.function.name, json.loads(tool_call.function.arguments))
+                    if self.async_execution:
+                        futures.append(result)
+                
+                # Si hay futures pendientes y estamos en modo async, esperamos a que terminen
+                if self.async_execution and futures:
+                    try:
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        
+                        if loop.is_running():
+                            futures = [asyncio.ensure_future(future) for future in futures]
+                            loop.run_until_complete(asyncio.gather(*futures))
+                        else:
+                            loop.run_until_complete(asyncio.gather(*futures))
+                    except Exception as e:
+                        print(f"Error al ejecutar corrutinas en streaming: {e}")
+                
+                yield "Todas las funciones se han ejecutado en segundo plano."
+            elif execution_mode == self.GET_ARGS:
+                yield tool_calls
+            elif execution_mode == self.WAIT_RESPONSE and tool_calls:
+                # Para WAIT_RESPONSE, ejecutamos las herramientas y devolvemos los resultados
+                print(f"DEBUG: En streaming, procesando herramientas en modo WAIT_RESPONSE con async_execution={self.async_execution}")
+                results = []
+                futures = []
+                
+                for tool_call in tool_calls:
+                    if hasattr(tool_call, 'function'):
+                        function_name = tool_call.function.name
+                        function_args = json.loads(tool_call.function.arguments)
+                        
+                        if function_name in self.skill_manager.get_skill_names():
+                            if self.async_execution:
+                                result = self._execute_skill(function_name, function_args)
+                                futures.append(result)
+                            else:
+                                result = self._execute_skill(function_name, function_args)
+                                results.append(result)
+                        else:
+                            print(f"Función {function_name} no encontrada en las skills disponibles")
+                
+                # Si hay futures pendientes, esperamos a que terminen
+                if self.async_execution and futures:
+                    try:
+                        try:
+                            loop = asyncio.get_event_loop()
+                        except RuntimeError:
+                            loop = asyncio.new_event_loop()
+                            asyncio.set_event_loop(loop)
+                        
+                        if loop.is_running():
+                            futures = [asyncio.ensure_future(future) for future in futures]
+                            results = loop.run_until_complete(asyncio.gather(*futures))
+                        else:
+                            results = loop.run_until_complete(asyncio.gather(*futures))
+                        
+                        print(f"Resultados de ejecución asíncrona en streaming: {results}")
+                    except Exception as e:
+                        print(f"Error al ejecutar corrutinas en streaming con WAIT_RESPONSE: {e}")
+                
+                # Devolvemos los resultados
+                if results:
+                    yield results[0] if len(results) == 1 else results
 
         if return_full_response:
             yield {
