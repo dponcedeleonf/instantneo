@@ -7,7 +7,7 @@ from instantneo.skills import SkillManager
 from instantneo.utils.image_utils import process_images
 from instantneo.utils.skill_utils import format_tool
 
-@dataclass
+@dataclass(kw_only=True)
 class BaseParams:
     """Base class for all parameter classes with common LLM parameters."""
     model: str
@@ -20,7 +20,7 @@ class BaseParams:
     seed: Optional[int] = None
     stream: bool = False
 
-@dataclass
+@dataclass(kw_only=True)
 class InstantNeoParams(BaseParams):
     """Parameters for initializing an InstantNeo instance."""
     provider: str

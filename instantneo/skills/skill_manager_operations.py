@@ -1,5 +1,5 @@
 from typing import List, Dict, Set, Optional, Union
-from skill_manager import SkillManager
+from .skill_manager import SkillManager
 
 class SkillManagerOperations:
     @staticmethod
