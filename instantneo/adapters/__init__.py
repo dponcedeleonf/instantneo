@@ -1,9 +1,3 @@
-"""Módulo de adaptadores para diferentes proveedores de IA.
-
-Este módulo contiene los adaptadores que permiten a InstantNeo
-interactuar con diferentes proveedores de modelos de lenguaje.
-"""
-
 from .base_adapter import BaseAdapter
 
 __all__ = ['BaseAdapter']

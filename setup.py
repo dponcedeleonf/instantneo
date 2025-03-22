@@ -17,10 +17,8 @@ if is_direct_install:
 
 setup(
     name='instantneo',
-    version='0.2.10',  # Incrementar la versión
-    packages=find_packages() + ['instantneo.adapters',
-                              'instantneo.skills',
-                              'instantneo.utils'],
+    version='0.2.12',  # Incrementar la versión
+    packages=find_packages(),
     install_requires=install_requires,
     extras_require={
         'openai': ['openai'],

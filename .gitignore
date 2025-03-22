@@ -15,4 +15,5 @@ __pycache__/
 *$py.class
 .pypirc
 test.py
+funciones.py
 test/*
