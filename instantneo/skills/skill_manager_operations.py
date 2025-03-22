@@ -2,6 +2,20 @@ from typing import List, Dict, Set, Optional, Union
 from .skill_manager import SkillManager
 
 class SkillManagerOperations:
+    """Provides operations on SkillManagers.
+
+    methods:
+        union(*managers: "SkillManager") -> "SkillManager" 
+        -- Returns a SkillManager that contains the union of all the skills registered in the managers passed
+        intersection(*managers: "SkillManager") -> "SkillManager"
+        -- Returns a SkillManager with the skills that appear in all the managers passed
+        difference(base_manager: "SkillManager", exclude_manager: "SkillManager") -> "SkillManager"
+        -- Returns a SkillManager with the skills that are in base_manager but not in exclude_manager
+        symmetric_difference(manager_a: "SkillManager", manager_b: "SkillManager") -> "SkillManager"
+        -- Returns a SkillManager with the symmetric difference of the skills in manager_a and manager_b
+        compare(manager_a: "SkillManager", manager_b: "SkillManager") -> Dict[str, set[str]]
+        -- Returns a dictionary with the common skills, unique to manager_a and unique to manager_b
+    """
     @staticmethod
     def union(*managers: "SkillManager") -> "SkillManager":
         """

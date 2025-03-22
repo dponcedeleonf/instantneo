@@ -12,11 +12,11 @@ def skill(
     **additional_metadata
 ):
     """
-    Decorador que añade metadata a la función y captura la información de la última llamada.
+    Decorator that adds metadata to the function and captures information about the last call.
     
-    Extrae automáticamente los tipos de los parámetros y la documentación (descripción y
-    parámetros) de la función en formatos Google, NumPy o reStructuredText si no se especifica
-    en la metadata del decorador. Los valores proporcionados manualmente prevalecen.
+    Automatically extracts parameter types and function documentation (description and
+    parameters) in Google, NumPy, or reStructuredText format if not specified in the decorator's
+    metadata. Values provided manually take precedence.
     """
     tags = tags or []  # Asigna lista vacía si no se proporcionan tags
 

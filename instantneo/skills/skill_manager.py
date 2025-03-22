@@ -36,6 +36,17 @@ class SkillLoader:
         self.manager._load_skills_from_module(module, metadata_filter)
 
 class SkillManager:
+    """
+    Provide a way to register and retrieve skills.
+
+    methods:
+        register_skill(func): Register a skill function.
+        get_skill_names(): Get a list of registered skill names.
+        get_skills_with_keys(): Get a list of registered skill functions and their keys.
+        get_all_skills_metadata(): Get metadata for all registered skills.
+        get_skill_metadata_by_name(name): Get metadata for a skill by name.
+        get_skills_by_tag(tag, return_keys=False): Get skills with a specific tag.
+    """
     def __init__(self):
         # Almacenamos el módulo del contexto en el que se instanció el manager
         caller_frame = inspect.currentframe().f_back
@@ -142,7 +153,8 @@ class SkillManager:
             return None
         if len(matches) == 1:
             return matches[next(iter(matches.keys()))].skill_metadata
-        return {key: func.skill_metadata for key, func in matches.items()}
+        # For duplicate skills, just return the metadata of the first one
+        return matches[next(iter(matches.keys()))].skill_metadata
 
     def get_skills_by_tag(self, tag: str, 
                           return_keys: bool = False) -> Union[List[str], Dict[str, Any]]:
