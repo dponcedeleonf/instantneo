@@ -12,11 +12,11 @@ def skill(
     **additional_metadata
 ):
     """
-    Decorador que añade metadata a la función y captura la información de la última llamada.
+    Decorator that adds metadata to the function and captures information about the last call.
     
-    Extrae automáticamente los tipos de los parámetros y la documentación (descripción y
-    parámetros) de la función en formatos Google, NumPy o reStructuredText si no se especifica
-    en la metadata del decorador. Los valores proporcionados manualmente prevalecen.
+    Automatically extracts parameter types and function documentation (description and
+    parameters) in Google, NumPy, or reStructuredText format if not specified in the decorator's
+    metadata. Values provided manually take precedence.
     """
     tags = tags or []  # Asigna lista vacía si no se proporcionan tags
 
@@ -47,9 +47,9 @@ def skill(
 
         # Extraer la firma de la función para determinar los parámetros requeridos
         signature = inspect.signature(func)
-        print("Firma de la función:", signature)
-        for param_name, param in signature.parameters.items():
-            print(f"{param_name}: default={param.default}, required={param.default == inspect.Parameter.empty}")
+        # print("Firma de la función:", signature)
+        # for param_name, param in signature.parameters.items():
+            # print(f"{param_name}: default={param.default}, required={param.default == inspect.Parameter.empty}")
 
         required_params = [
             param_name for param_name, param in signature.parameters.items()

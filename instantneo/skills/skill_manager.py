@@ -36,6 +36,17 @@ class SkillLoader:
         self.manager._load_skills_from_module(module, metadata_filter)
 
 class SkillManager:
+    """
+    Provide a way to register and retrieve skills.
+
+    methods:
+        register_skill(func): Register a skill function.
+        get_skill_names(): Get a list of registered skill names.
+        get_skills_with_keys(): Get a list of registered skill functions and their keys.
+        get_all_skills_metadata(): Get metadata for all registered skills.
+        get_skill_metadata_by_name(name): Get metadata for a skill by name.
+        get_skills_by_tag(tag, return_keys=False): Get skills with a specific tag.
+    """
     def __init__(self):
         # Almacenamos el módulo del contexto en el que se instanció el manager
         caller_frame = inspect.currentframe().f_back
@@ -108,20 +119,50 @@ class SkillManager:
                 registered.append(f"{attr.__module__}.{attr.__name__}")
         return registered
 
-    def _load_skills_from_folder(self, folder_path: str, 
-                                metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
+    def _load_skills_from_folder(self, folder_path: str, metadata_filter=None): 
+        """
+        Carga skills desde archivos Python en un directorio sin requerir que sean módulos importables.
+        """
         if not os.path.isdir(folder_path):
             raise ValueError(f"{folder_path} no es una carpeta válida.")
         
-        registered = []
-        for finder, name, ispkg in pkgutil.iter_modules([folder_path]):
-            module = importlib.import_module(name)
-            self._load_skills_from_module(module, metadata_filter)
-            for attr_name in dir(module):
-                attr = getattr(module, attr_name)
-                if callable(attr) and hasattr(attr, 'skill_metadata'):
-                    registered.append(f"{attr.__module__}.{attr.__name__}")
-        return registered
+        # registered = []
+        
+        # Recorre todos los archivos .py en la carpeta
+        for filename in os.listdir(folder_path):
+            # print(f"Procesando '{filename}'")
+            if filename.endswith('.py'):
+                file_path = os.path.join(folder_path, filename)
+                module_name = os.path.splitext(filename)[0]
+                            
+                # Carga el módulo desde el archivo directamente
+                try:
+                    spec = importlib.util.spec_from_file_location(module_name, file_path)
+                    module = importlib.util.module_from_spec(spec)
+                    
+                    # Registra el módulo temporalmente en sys.modules para permitir importaciones internas
+                    sys.modules[module_name] = module
+                    
+                    # Ejecuta el módulo
+                    spec.loader.exec_module(module)
+                    
+                    # Carga las skills desde el módulo
+                    self._load_skills_from_module(module, metadata_filter)
+                    
+                    # # Registra las skills encontradas
+                    # for attr_name in dir(module):
+                    #     attr = getattr(module, attr_name)
+                    #     if callable(attr) and hasattr(attr, 'skill_metadata'):
+                    #         print(f"ver el interior de ATTR: {}")
+                    #         registered.append(f"{attr._module}.{attr.name_}")
+                    
+                    # Opcional: limpiar sys.modules si no quieres mantener el módulo cargado
+                    del sys.modules[module_name]
+                    
+                except Exception as e:
+                    print(f"Error al cargar el archivo {file_path}: {e}")
+        
+        return f"Skills Loaded:{self.get_skill_names()} from {folder_path}"
 
     # Métodos de consulta y manejo del registro (se mantienen sin cambios)
     def get_skill_names(self) -> List[str]:
@@ -142,7 +183,8 @@ class SkillManager:
             return None
         if len(matches) == 1:
             return matches[next(iter(matches.keys()))].skill_metadata
-        return {key: func.skill_metadata for key, func in matches.items()}
+        # For duplicate skills, just return the metadata of the first one
+        return matches[next(iter(matches.keys()))].skill_metadata
 
     def get_skills_by_tag(self, tag: str, 
                           return_keys: bool = False) -> Union[List[str], Dict[str, Any]]:

@@ -13,5 +13,7 @@ venv/
 __pycache__/
 *.py[cod]
 *$py.class
-
+.pypirc
 test.py
+funciones.py
+test/*

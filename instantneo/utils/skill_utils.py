@@ -23,7 +23,7 @@ def python_type_to_string(python_type):
 
 
 def format_tool(skill_info: Dict[str, Any]) -> Dict[str, Any]:
-    print("skill_info:", skill_info)
+    # print("skill_info:", skill_info)
     if 'parameters' not in skill_info:
         raise ValueError(
             f"Skill metadata for '{skill_info.get('name', 'unknown')}' is missing 'parameters' key.")
