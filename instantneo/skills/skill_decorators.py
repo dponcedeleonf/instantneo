@@ -47,9 +47,9 @@ def skill(
 
         # Extraer la firma de la función para determinar los parámetros requeridos
         signature = inspect.signature(func)
-        print("Firma de la función:", signature)
-        for param_name, param in signature.parameters.items():
-            print(f"{param_name}: default={param.default}, required={param.default == inspect.Parameter.empty}")
+        # print("Firma de la función:", signature)
+        # for param_name, param in signature.parameters.items():
+            # print(f"{param_name}: default={param.default}, required={param.default == inspect.Parameter.empty}")
 
         required_params = [
             param_name for param_name, param in signature.parameters.items()

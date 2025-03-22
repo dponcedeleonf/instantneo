@@ -47,7 +47,7 @@ class AnthropicAdapter(BaseAdapter):
 
     def create_chat_completion(self, **kwargs) -> Response:
         cleaned_kwargs = self._clean_kwargs(kwargs)
-        print("Parámetros limpiados:", cleaned_kwargs)
+        # print("Parámetros limpiados:", cleaned_kwargs)
 
         try:
             response = self.client.messages.create(**cleaned_kwargs )
@@ -79,7 +79,7 @@ class AnthropicAdapter(BaseAdapter):
         return True  # Anthropic supports images starting from Claude 3 models
 
     def _convert_response_to_instantneo_format(self, response) -> Choice:
-        print("response: ",response)
+        # print("response: ",response)
         message_content = ''
         function_call = None
         tool_calls = []

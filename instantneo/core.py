@@ -418,7 +418,7 @@ Args:
         # Determine which skills to use
         skills_to_use = skills if skills is not None else [name for name in self.get_skill_names()] 
 
-        print(f"Skills to be used in this run: {skills_to_use}")
+        #print(f"Skills to be used in this run: {skills_to_use}")
 
         # Create RunParams with explicit parameters
         run_params = RunParams(
@@ -462,7 +462,7 @@ Args:
         self.async_execution = run_params.async_execution
 
         active_skills = self._get_active_skills(skills_to_use)
-        print(f"Active skills for this run: {list(active_skills.keys())}")
+        #print(f"Active skills for this run: {list(active_skills.keys())}")
 
         image_config = self._get_image_config(run_params)
 
@@ -477,16 +477,14 @@ Args:
                 if skill_info and 'parameters' in skill_info:
                     formatted_tools.append(format_tool(skill_info))
                 else:
-                    print(
-                        f"Warning: Skill '{name}' is missing metadata or 'parameters'. Skipping.")
+                    print(f"Warning: Skill '{name}' is missing metadata or 'parameters'. Skipping.")
 
             if formatted_tools:
                 adapter_params.additional_params['tools'] = formatted_tools
                 if 'tool_choice' in run_params.additional_params:
                     adapter_params.additional_params['tool_choice'] = run_params.additional_params['tool_choice']
 
-        print("Adapter params:", json.dumps(
-            adapter_params.to_dict(), indent=2))
+        #print("Adapter params:", json.dumps(adapter_params.to_dict(), indent=2))
 
         if run_params.stream:
             return self._handle_streaming_response(adapter_params, run_params.execution_mode, run_params.return_full_response)
@@ -513,8 +511,7 @@ Args:
             if skill:
                 active_skills[skill_name] = skill
             else:
-                print(
-                    f"Warning: Skill '{skill_name}' not found in SkillManager.")
+                print(f"Warning: Skill '{skill_name}' not found in SkillManager.")
 
         return active_skills
 
@@ -551,12 +548,12 @@ Args:
     def _process_response(self, response, execution_mode):
         """Process the response from the language model."""
         if not hasattr(response, 'choices') or len(response.choices) == 0:
-            print("No 'choices' were found in the response")
+            #print("No 'choices' were found in the response")
             return None
 
         choice = response.choices[0]
         if not hasattr(choice, 'message'):
-            print("No 'message' attribute found in the choice")
+            #print("No 'message' attribute found in the choice")
             return None
 
         message = choice.message
@@ -565,8 +562,7 @@ Args:
             message, 'tool_calls') else None
 
         if tool_calls:
-            print(
-                f'{"*" * 40}\n* {"I am using my skills. Wait for it...":^36} *\n{"*" * 40}\n')
+            #print(f'{"*" * 40}\n* {"I am using my skills. Wait for it...":^36} *\n{"*" * 40}\n')
             results = self._handle_tool_calls(tool_calls, execution_mode)
             return results
         else:
@@ -576,15 +572,13 @@ Args:
         """Handle tool calls from the language model."""
         results = []
         futures = []  # Para almacenar futures en caso de ejecución asíncrona
-        print(
-            f"DEBUG: Valor de self.async_execution en _handle_tool_calls: {self.async_execution}")
+        #print(f"DEBUG: Valor de self.async_execution en _handle_tool_calls: {self.async_execution}")
 
         for tool_call in tool_calls:
             if tool_call.type == 'function':
                 function_name = tool_call.function.name
                 function_args = json.loads(tool_call.function.arguments)
-                print(
-                    f"Llamando a la función: {function_name} con argumentos: {function_args}")
+                #print(f"Llamando a la función: {function_name} con argumentos: {function_args}")
 
                 if function_name in self.get_skill_names():
                     skill = self.get_skill_by_name(function_name)
@@ -594,8 +588,7 @@ Args:
                             function_name, function_args)
                         if self.async_execution:
                             futures.append(result)
-                        print(
-                            f"Función {function_name} ejecutada usando EXECUTION_ONLY (async_execution={self.async_execution})")
+                        #print(f"Función {function_name} ejecutada usando EXECUTION_ONLY (async_execution={self.async_execution})")
                     elif execution_mode == self.GET_ARGS:
                         results.append(
                             {"name": function_name, "arguments": function_args})
@@ -608,8 +601,7 @@ Args:
                                 function_name, function_args)
                             results.append(result)
                 else:
-                    print(
-                        f"Función {function_name} no encontrada en las skills disponibles")
+                    print(f"Función {function_name} no encontrada en las skills disponibles")
 
         # Si estamos en modo WAIT_RESPONSE y async_execution=True, ejecutamos todas las corrutinas
         # de manera síncrona para esperar los resultados
@@ -632,7 +624,7 @@ Args:
                     # Si el loop no está corriendo, simplemente ejecutamos gather
                     results = loop.run_until_complete(asyncio.gather(*results))
 
-                print(f"Resultados de ejecución asíncrona: {results}")
+                #print(f"Resultados de ejecución asíncrona: {results}")
             except Exception as e:
                 print(f"Error al ejecutar corrutinas de manera asíncrona: {e}")
 
@@ -652,8 +644,7 @@ Args:
                 else:
                     loop.run_until_complete(asyncio.gather(*futures))
             except Exception as e:
-                print(
-                    f"Error al ejecutar corrutinas en modo EXECUTION_ONLY: {e}")
+                print(f"Error al ejecutar corrutinas en modo EXECUTION_ONLY: {e}")
 
         if execution_mode == self.EXECUTION_ONLY:
             return "Todas las funciones se han ejecutado en segundo plano."
@@ -667,23 +658,20 @@ Args:
         skill = self.get_skill_by_name(skill_name)
         if skill is None:
             raise ValueError(f"Skill not found: {skill_name}")
-        print(
-            f"DEBUG: _execute_skill llamado para {skill_name} con async_execution={self.async_execution}")
+        #print(f"DEBUG: _execute_skill llamado para {skill_name} con async_execution={self.async_execution}")
         if self.async_execution:
-            print(
-                f"ASYNC_EXECUTION: Preparando {skill_name} para ejecución asíncrona")
+            #print(f"ASYNC_EXECUTION: Preparando {skill_name} para ejecución asíncrona")
             # Solo preparamos la función para ejecución asíncrona, no la ejecutamos todavía
             loop = asyncio.get_event_loop()
             return loop.run_in_executor(None, lambda skill, arguments: (next(iter(skill.values())) if isinstance(skill, dict) else skill)(**arguments), skill, arguments)
         else:
-            print(f"SYNC_EXECUTION: Ejecutando {skill_name} de forma síncrona")
+            #print(f"SYNC_EXECUTION: Ejecutando {skill_name} de forma síncrona")
             skill = next(iter(skill.values())) if isinstance(skill, dict) else skill
             return skill(**arguments)
 
     def _handle_streaming_response(self, adapter_params: AdapterParams, execution_mode: str, return_full_response: bool):
         """Handle streaming responses from the language model."""
-        print(
-            f"DEBUG: Valor de self.async_execution en _handle_streaming_response: {self.async_execution}")
+        #print(f"DEBUG: Valor de self.async_execution en _handle_streaming_response: {self.async_execution}")
         stream = self.adapter.create_streaming_chat_completion(
             **adapter_params.to_dict())
         full_response = ""
@@ -728,8 +716,7 @@ Args:
         # Procesamos las herramientas según el modo de ejecución
         if tool_calls:
             if execution_mode == self.EXECUTION_ONLY:
-                print(
-                    f"DEBUG: En streaming, usando _execute_skill con async_execution={self.async_execution}")
+                #print(f"DEBUG: En streaming, usando _execute_skill con async_execution={self.async_execution}")
                 futures = []
                 for tool_call in tool_calls:
                     result = self._execute_skill(
@@ -753,16 +740,14 @@ Args:
                         else:
                             loop.run_until_complete(asyncio.gather(*futures))
                     except Exception as e:
-                        print(
-                            f"Error al ejecutar corrutinas en streaming: {e}")
+                        print(f"Error al ejecutar corrutinas en streaming: {e}")
 
                 yield "Todas las funciones se han ejecutado en segundo plano."
             elif execution_mode == self.GET_ARGS:
                 yield tool_calls
             elif execution_mode == self.WAIT_RESPONSE and tool_calls:
                 # Para WAIT_RESPONSE, ejecutamos las herramientas y devolvemos los resultados
-                print(
-                    f"DEBUG: En streaming, procesando herramientas en modo WAIT_RESPONSE con async_execution={self.async_execution}")
+                #print(f"DEBUG: En streaming, procesando herramientas en modo WAIT_RESPONSE con async_execution={self.async_execution}")
                 results = []
                 futures = []
 
@@ -782,8 +767,8 @@ Args:
                                     function_name, function_args)
                                 results.append(result)
                         else:
-                            print(
-                                f"Función {function_name} no encontrada en las skills disponibles")
+                            print(f"Función {function_name} no encontrada en las skills disponibles")
+
 
                 # Si hay futures pendientes, esperamos a que terminen
                 if self.async_execution and futures:
@@ -803,11 +788,10 @@ Args:
                             results = loop.run_until_complete(
                                 asyncio.gather(*futures))
 
-                        print(
-                            f"Resultados de ejecución asíncrona en streaming: {results}")
+                        #print(f"Resultados de ejecución asíncrona en streaming: {results}")
                     except Exception as e:
-                        print(
-                            f"Error al ejecutar corrutinas en streaming con WAIT_RESPONSE: {e}")
+                        print(f"Error al ejecutar corrutinas en streaming con WAIT_RESPONSE: {e}")
+                        
 
                 # Devolvemos los resultados
                 if results:
