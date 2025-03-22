@@ -119,20 +119,50 @@ class SkillManager:
                 registered.append(f"{attr.__module__}.{attr.__name__}")
         return registered
 
-    def _load_skills_from_folder(self, folder_path: str, 
-                                metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> List[str]:
+    def _load_skills_from_folder(self, folder_path: str, metadata_filter=None): 
+        """
+        Carga skills desde archivos Python en un directorio sin requerir que sean módulos importables.
+        """
         if not os.path.isdir(folder_path):
             raise ValueError(f"{folder_path} no es una carpeta válida.")
         
-        registered = []
-        for finder, name, ispkg in pkgutil.iter_modules([folder_path]):
-            module = importlib.import_module(name)
-            self._load_skills_from_module(module, metadata_filter)
-            for attr_name in dir(module):
-                attr = getattr(module, attr_name)
-                if callable(attr) and hasattr(attr, 'skill_metadata'):
-                    registered.append(f"{attr.__module__}.{attr.__name__}")
-        return registered
+        # registered = []
+        
+        # Recorre todos los archivos .py en la carpeta
+        for filename in os.listdir(folder_path):
+            # print(f"Procesando '{filename}'")
+            if filename.endswith('.py'):
+                file_path = os.path.join(folder_path, filename)
+                module_name = os.path.splitext(filename)[0]
+                            
+                # Carga el módulo desde el archivo directamente
+                try:
+                    spec = importlib.util.spec_from_file_location(module_name, file_path)
+                    module = importlib.util.module_from_spec(spec)
+                    
+                    # Registra el módulo temporalmente en sys.modules para permitir importaciones internas
+                    sys.modules[module_name] = module
+                    
+                    # Ejecuta el módulo
+                    spec.loader.exec_module(module)
+                    
+                    # Carga las skills desde el módulo
+                    self._load_skills_from_module(module, metadata_filter)
+                    
+                    # # Registra las skills encontradas
+                    # for attr_name in dir(module):
+                    #     attr = getattr(module, attr_name)
+                    #     if callable(attr) and hasattr(attr, 'skill_metadata'):
+                    #         print(f"ver el interior de ATTR: {}")
+                    #         registered.append(f"{attr._module}.{attr.name_}")
+                    
+                    # Opcional: limpiar sys.modules si no quieres mantener el módulo cargado
+                    del sys.modules[module_name]
+                    
+                except Exception as e:
+                    print(f"Error al cargar el archivo {file_path}: {e}")
+        
+        return f"Skills Loaded:{self.get_skill_names()} from {folder_path}"
 
     # Métodos de consulta y manejo del registro (se mantienen sin cambios)
     def get_skill_names(self) -> List[str]:

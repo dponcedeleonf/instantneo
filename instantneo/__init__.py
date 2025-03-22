@@ -1,17 +1,22 @@
-"""Paquete InstantNeo
+"""InstantNeo Package
 
-Este paquete provee la interfaz principal para acceder a las funcionalidades de InstantNeo.
+This package provides the main interface to access InstantNeo's functionalities.
 
-Estructura de importación:
-- instantneo.InstantNeo: Clase principal que encapsula la lógica de InstantNeo.
-- instantneo.Skills: Contiene utilidades relacionadas con las skills.
-    - instantneo.Skills.skill: Decorador para definir skills.
-    - instantneo.Skills.SkillManager: Administrador de skills.
-    - instantneo.Skills.SkillManagerOperations: Operaciones adicionales para gestionar skills y sus managers.
-- instantneo.Adapters: Contiene los adaptadores para los diferentes proveedores.
-    - instantneo.Adapters.Groq: Adaptador para Groq.
-    - instantneo.Adapters.Openai: Adaptador para OpenAI.
-    - instantneo.Adapters.Anthropic: Adaptador para Anthropic.
+Easy import:
+```python
+from instantneo import InstantNeo, skill, SkillManager, SkillManagerOperations
+```
+
+Package structure:
+- instantneo.InstantNeo: Main class encapsulating InstantNeo's logic.
+- instantneo.Skills: Contains utilities related to skills.
+    - instantneo.Skills.skill: Decorator to define skills.
+    - instantneo.Skills.SkillManager: Skills manager.
+    - instantneo.Skills.SkillManagerOperations: Additional operations for managing skills and their managers.
+- instantneo.Adapters: Contains adapters for different providers.
+    - instantneo.Adapters.Groq: Adapter for Groq.
+    - instantneo.Adapters.Openai: Adapter for OpenAI.
+    - instantneo.Adapters.Anthropic: Adapter for Anthropic.
 """
 
 # Importación de la clase principal

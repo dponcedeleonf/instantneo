@@ -204,6 +204,8 @@ class InstantNeo:
             image_detail=image_detail,
         )
 
+        # print(f"Tipo de 'self.config.skills': {type(self.config.skills)}")
+
         # Initialize skill manager
         if isinstance(self.config.skills, SkillManager):
             self.skill_manager = self.config.skills
@@ -222,6 +224,9 @@ class InstantNeo:
     ##################################
 
     ##### Skill Management #####
+    def mod_role(self,new_role):
+        self.config.role_setup = new_role
+        return
 
     # Backward compatibility methods
     def add_skill(self, skill: Callable):
@@ -292,6 +297,16 @@ class InstantNeo:
         Args:
             metadata_filter (Optional[Callable[[Dict[str, Any]], bool]], optional): A function to filter skills by metadata. Defaults to None."""
         return self.skill_manager._load_skills_from_current_module(metadata_filter)
+    
+    def load_skills_from_folder(self, folder_path: str, metadata_filter: Optional[Callable[[Dict[str, Any]], bool]] = None) -> None:
+        """Load skills from a folder.
+
+        Args:
+            folder_path (str): The path to the folder.
+            metadata_filter (Optional[Callable[[Dict[str, Any]], bool]], optional): A function to filter skills by metadata. Defaults to None."""
+        return self.skill_manager._load_skills_from_folder(folder_path, metadata_filter)
+
+
 
     ##### Skill Operations #####
 
@@ -418,7 +433,7 @@ Args:
         # Determine which skills to use
         skills_to_use = skills if skills is not None else [name for name in self.get_skill_names()] 
 
-        #print(f"Skills to be used in this run: {skills_to_use}")
+        # print(f"Skills to be used in this run: {skills_to_use}")
 
         # Create RunParams with explicit parameters
         run_params = RunParams(
