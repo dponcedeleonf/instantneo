@@ -562,7 +562,7 @@ Args:
             message, 'tool_calls') else None
 
         if tool_calls:
-            #print(f'{"*" * 40}\n* {"I am using my skills. Wait for it...":^36} *\n{"*" * 40}\n')
+            print(f'{"*" * 40}\n* {"I am using my skills. Wait for it...":^36} *\n{"*" * 40}\n')
             results = self._handle_tool_calls(tool_calls, execution_mode)
             return results
         else:
