@@ -30,7 +30,7 @@ def format_tool(skill_info: Dict[str, Any]) -> Dict[str, Any]:
     properties = {}
     for name, param in skill_info["parameters"].items():
         param_type = param["type"]
-        param_description = param["fdescription"]
+        param_description = param["description"]
         if isinstance(param_type, dict):
             # Tipos complejos como arrays u objetos
             properties[name] = {
