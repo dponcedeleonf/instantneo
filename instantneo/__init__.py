@@ -23,31 +23,27 @@ from .skills.skill_manager import SkillManager
 from .skills.skill_manager_operations import SkillManagerOperations
 
 # Importaciones para Adapters - Usando importación condicional
-# Inicializar variables para evitar errores de referencia
-GroqAdapter = None
-OpenAIAdapter = None
-AnthropicAdapter = None
 
 # Intentar importar OpenAIAdapter si está disponible
 try:
     from .adapters.openai_adapter import OpenAIAdapter
-    print("OpenAIAdapter importado correctamente")
+    # print("OpenAIAdapter importado correctamente")
 except ImportError:
-    print("No se pudo importar OpenAIAdapter - el paquete openai no está instalado")
+    OpenAIAdapter = None
 
 # Intentar importar AnthropicAdapter si está disponible
 try:
     from .adapters.anthropic_adapter import AnthropicAdapter
-    print("AnthropicAdapter importado correctamente")
+    # print("AnthropicAdapter importado correctamente")
 except ImportError:
-    print("No se pudo importar AnthropicAdapter - el paquete anthropic no está instalado")
+    AnthropicAdapter = None
 
 # Intentar importar GroqAdapter si está disponible
 try:
     from .adapters.groq_adapter import GroqAdapter
-    print("GroqAdapter importado correctamente")
+    # print("GroqAdapter importado correctamente")
 except ImportError:
-    print("No se pudo importar GroqAdapter - el paquete groq no está instalado")
+    GroqAdapter = None
 
 # Namespace para Skills
 class Skills:
