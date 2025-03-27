@@ -10,14 +10,14 @@ base_requires = ['docstring_parser']
 # Si es una instalación directa sin extras, agregar todas las dependencias
 install_requires = base_requires.copy()
 if is_direct_install:
-    print("\nAtención: Instalando instantneo con todas las dependencias.\n"
-          "Para una instalación más ligera, especifica: pip install instantneo[openai], "
-          "instantneo[anthropic], o instantneo[groq]\n")
+    # print("\nAtención: Instalando instantneo con todas las dependencias.\n"
+    #       "Para una instalación más ligera, especifica: pip install instantneo[openai], "
+    #       "instantneo[anthropic], o instantneo[groq]\n")
     install_requires.extend(['openai', 'anthropic', 'groq'])
 
 setup(
     name='instantneo',
-    version='0.2.17',  # Incrementar la versión
+    version='0.1.1', 
     packages=find_packages(),
     install_requires=install_requires,
     extras_require={

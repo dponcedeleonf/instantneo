@@ -28,9 +28,22 @@ InstantNeo is a Python library that lets you create LLM-based agents quickly and
 - **Customizable Agent Settings:** Modify agent behavior on-the-fly by overriding temperature, max tokens, role setup, and other parameters for specific interactions without recreating the entire agent.
 
 ## Installation
+InstantNeo requires specifying which providers will be installed. You can use [all] to install dependencies for all supported providers:
 
 ```bash
-pip install instantneo
+pip install instantneo[all]
+```
+
+```bash
+pip install instantneo[openai]
+```
+
+```bash
+pip install instantneo[groq]
+```
+
+```bash
+pip install instantneo[anthropic]
 ```
 
 ## Quickstart
