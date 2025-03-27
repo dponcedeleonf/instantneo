@@ -9,6 +9,7 @@ dist/
 build/
 *.egg-info/
 *.egg
+.pypirc
 
 # Virtual environments
 venv/
@@ -52,3 +53,6 @@ site/
 test.py
 funciones.py
 test/*
+
+# Local development settings
+pyproject.toml
