@@ -1,4 +1,58 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+punk_py.egg-info/
+
+# Distribution / packaging
+dist/
+build/
+*.egg-info/
+*.egg
+.pypirc
+
+# Virtual environments
+venv/
+env/
+ENV/
+.env/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+docs/_build/
+site/
+
+# IDE specific files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Local development settings
 .env
-build/*
-dist/*
-instantneo.egg-info/*
+.env.local
+
+# Build artifacts
+*.so
+*.dylib
+*.dll
+
+# Logs
+*.log
+
+# Byte-compiled / optimized / DLL files
+test.py
+funciones.py
+test/*
+
+# Local development settings
+pyproject.toml
